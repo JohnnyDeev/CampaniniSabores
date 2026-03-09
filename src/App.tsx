@@ -1,16 +1,11 @@
-/**
- * @license
- * SPDX-License-Identifier: Apache-2.0
- */
-
 import React, { useState, useEffect, useMemo } from 'react';
-import { 
-  ShoppingBag, 
-  Plus, 
-  Minus, 
-  Star, 
-  ArrowLeft, 
-  CheckCircle2, 
+import {
+  ShoppingBag,
+  Plus,
+  Minus,
+  Star,
+  ArrowLeft,
+  CheckCircle2,
   MessageCircle,
   X
 } from 'lucide-react';
@@ -85,13 +80,13 @@ export default function App() {
   const [orderMessage, setOrderMessage] = useState('');
   const [ratingProduct, setRatingProduct] = useState<Esfiha | null>(null);
 
-  // Load ratings from localStorage on mount
+  // carrega avaliações
   useEffect(() => {
     const savedRatings = localStorage.getItem('campanini_ratings');
     if (savedRatings) setRatings(JSON.parse(savedRatings));
   }, []);
 
-  // Save ratings to localStorage when they change
+  // salva avaliações ao mudar
   useEffect(() => {
     localStorage.setItem('campanini_ratings', JSON.stringify(ratings));
   }, [ratings]);
@@ -187,9 +182,9 @@ export default function App() {
           <WelcomeScreen key="welcome" onNext={() => setCurrentScreen('menu')} />
         )}
         {currentScreen === 'menu' && (
-          <MenuScreen 
-            key="menu" 
-            onNext={() => setCurrentScreen('bag')} 
+          <MenuScreen
+            key="menu"
+            onNext={() => setCurrentScreen('bag')}
             addToBag={addToBag}
             removeFromBag={removeFromBag}
             getQuantity={getQuantity}
@@ -199,8 +194,8 @@ export default function App() {
           />
         )}
         {currentScreen === 'bag' && (
-          <BagScreen 
-            key="bag" 
+          <BagScreen
+            key="bag"
             bag={bag}
             totalPrice={totalPrice}
             customerInfo={customerInfo}
@@ -217,9 +212,9 @@ export default function App() {
       {/* Rating Dialog */}
       <AnimatePresence>
         {ratingProduct && (
-          <RatingDialog 
-            product={ratingProduct} 
-            onClose={() => setRatingProduct(null)} 
+          <RatingDialog
+            product={ratingProduct}
+            onClose={() => setRatingProduct(null)}
             onSave={saveRating}
           />
         )}
@@ -232,14 +227,14 @@ export default function App() {
 
 function WelcomeScreen({ onNext }: { onNext: () => void; key?: string }) {
   return (
-    <motion.div 
+    <motion.div
       variants={screenVariants}
       initial="initial"
       animate="animate"
       exit="exit"
       className="max-w-md mx-auto px-6 py-12 flex flex-col items-center justify-center min-h-screen text-center"
     >
-      <motion.div 
+      <motion.div
         initial={{ scale: 0.8, opacity: 0 }}
         animate={{ scale: 1, opacity: 1 }}
         transition={{ delay: 0.2, duration: 0.6, type: "spring", stiffness: 100 }}
@@ -263,8 +258,8 @@ function WelcomeScreen({ onNext }: { onNext: () => void; key?: string }) {
           {[1, 2, 3, 4, 5].map(i => <Star key={i} size={12} fill="#7F1D1D" className="text-[#7F1D1D]" />)}
         </div>
       </motion.div>
-      
-      <motion.div 
+
+      <motion.div
         variants={itemVariants}
         className="bg-white/95 backdrop-blur-sm p-8 rounded-3xl shadow-2xl text-left mb-10 border-2 border-[#7F1D1D]/5"
       >
@@ -283,7 +278,7 @@ function WelcomeScreen({ onNext }: { onNext: () => void; key?: string }) {
         </p>
       </motion.div>
 
-      <motion.button 
+      <motion.button
         variants={itemVariants}
         whileHover={{ scale: 1.02 }}
         whileTap={{ scale: 0.98 }}
@@ -296,15 +291,15 @@ function WelcomeScreen({ onNext }: { onNext: () => void; key?: string }) {
   );
 }
 
-function MenuScreen({ 
-  onNext, 
-  addToBag, 
-  removeFromBag, 
-  getQuantity, 
+function MenuScreen({
+  onNext,
+  addToBag,
+  removeFromBag,
+  getQuantity,
   totalItems,
   getAverageRating,
   onRate
-}: { 
+}: {
   onNext: () => void;
   addToBag: (id: string) => void;
   removeFromBag: (id: string) => void;
@@ -315,7 +310,7 @@ function MenuScreen({
   key?: string;
 }) {
   return (
-    <motion.div 
+    <motion.div
       variants={screenVariants}
       initial="initial"
       animate="animate"
@@ -323,14 +318,14 @@ function MenuScreen({
       className="max-w-2xl mx-auto px-4 py-8 pb-32"
     >
       <div className="flex justify-between items-center mb-8">
-        <motion.h2 
+        <motion.h2
           initial={{ x: -20, opacity: 0 }}
           animate={{ x: 0, opacity: 1 }}
           className="text-3xl font-bold"
         >
           Cardápio
         </motion.h2>
-        <motion.button 
+        <motion.button
           whileHover={{ scale: 1.1 }}
           whileTap={{ scale: 0.9 }}
           onClick={onNext}
@@ -345,7 +340,7 @@ function MenuScreen({
             <ShoppingBag size={24} />
           </motion.div>
           {totalItems > 0 && (
-            <motion.span 
+            <motion.span
               initial={{ scale: 0 }}
               animate={{ scale: 1 }}
               className="absolute -top-1 -right-1 bg-[#7F1D1D] text-white text-xs w-6 h-6 rounded-full flex items-center justify-center font-bold border-2 border-white"
@@ -356,14 +351,14 @@ function MenuScreen({
         </motion.button>
       </div>
 
-      <motion.div 
+      <motion.div
         variants={containerVariants}
         initial="initial"
         animate="animate"
         className="space-y-6"
       >
         {PRODUCTS.map(product => (
-          <motion.div 
+          <motion.div
             key={product.id}
             variants={itemVariants}
             layout
@@ -373,7 +368,7 @@ function MenuScreen({
               <h3 className="text-xl font-bold leading-tight">{product.name}</h3>
               <span className="text-lg font-bold whitespace-nowrap ml-4">R$ {product.price.toFixed(2)}</span>
             </div>
-            
+
             <p className="text-sm text-[#7F1D1D]/70 mb-4 leading-relaxed">
               {product.description}
             </p>
@@ -381,10 +376,10 @@ function MenuScreen({
             <div className="flex items-center gap-2 mb-6">
               <div className="flex items-center text-yellow-500">
                 {[1, 2, 3, 4, 5].map(star => (
-                  <Star 
-                    key={star} 
-                    size={16} 
-                    fill={star <= Math.round(getAverageRating(product.id)) ? "currentColor" : "none"} 
+                  <Star
+                    key={star}
+                    size={16}
+                    fill={star <= Math.round(getAverageRating(product.id)) ? "currentColor" : "none"}
                     className={star <= Math.round(getAverageRating(product.id)) ? "" : "text-gray-300"}
                   />
                 ))}
@@ -392,7 +387,7 @@ function MenuScreen({
               <span className="text-xs font-medium opacity-60">
                 {getAverageRating(product.id).toFixed(1)}
               </span>
-              <motion.button 
+              <motion.button
                 whileHover={{ scale: 1.05 }}
                 onClick={() => onRate(product)}
                 className="text-xs font-semibold underline ml-2"
@@ -403,14 +398,14 @@ function MenuScreen({
 
             <div className="flex items-center justify-between">
               <div className="flex items-center bg-[#EAB308]/10 rounded-lg p-1">
-                <motion.button 
+                <motion.button
                   whileTap={{ scale: 0.8 }}
                   onClick={() => removeFromBag(product.id)}
                   className="p-2 hover:bg-white rounded-md transition-colors"
                 >
                   <Minus size={18} />
                 </motion.button>
-                <motion.span 
+                <motion.span
                   key={getQuantity(product.id)}
                   initial={{ y: 5, opacity: 0 }}
                   animate={{ y: 0, opacity: 1 }}
@@ -418,7 +413,7 @@ function MenuScreen({
                 >
                   {getQuantity(product.id)}
                 </motion.span>
-                <motion.button 
+                <motion.button
                   whileTap={{ scale: 0.8 }}
                   onClick={() => addToBag(product.id)}
                   className="p-2 hover:bg-white rounded-md transition-colors"
@@ -426,8 +421,8 @@ function MenuScreen({
                   <Plus size={18} />
                 </motion.button>
               </div>
-              
-              <motion.button 
+
+              <motion.button
                 whileHover={{ scale: 1.05 }}
                 whileTap={{ scale: 0.95 }}
                 onClick={() => addToBag(product.id)}
@@ -441,13 +436,13 @@ function MenuScreen({
       </motion.div>
 
       {totalItems > 0 && (
-        <motion.div 
+        <motion.div
           initial={{ y: 100, opacity: 0 }}
           animate={{ y: 0, opacity: 1 }}
           exit={{ y: 100, opacity: 0 }}
           className="fixed bottom-6 left-4 right-4 max-w-2xl mx-auto"
         >
-          <motion.button 
+          <motion.button
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
             onClick={onNext}
@@ -462,14 +457,14 @@ function MenuScreen({
   );
 }
 
-function BagScreen({ 
-  bag, 
-  totalPrice, 
-  customerInfo, 
-  setCustomerInfo, 
-  onBack, 
-  onRegister 
-}: { 
+function BagScreen({
+  bag,
+  totalPrice,
+  customerInfo,
+  setCustomerInfo,
+  onBack,
+  onRegister
+}: {
   bag: BagItem[];
   totalPrice: number;
   customerInfo: { name: string; address: string; obs: string };
@@ -479,7 +474,7 @@ function BagScreen({
   key?: string;
 }) {
   return (
-    <motion.div 
+    <motion.div
       variants={screenVariants}
       initial="initial"
       animate="animate"
@@ -487,10 +482,10 @@ function BagScreen({
       className="max-w-2xl mx-auto px-4 py-8"
     >
       <div className="flex items-center gap-4 mb-8">
-        <motion.button 
+        <motion.button
           whileHover={{ scale: 1.1 }}
           whileTap={{ scale: 0.9 }}
-          onClick={onBack} 
+          onClick={onBack}
           className="p-2 bg-white rounded-full shadow-sm"
         >
           <ArrowLeft size={24} />
@@ -498,7 +493,7 @@ function BagScreen({
         <h2 className="text-3xl font-bold">Sua sacola</h2>
       </div>
 
-      <motion.div 
+      <motion.div
         variants={containerVariants}
         initial="initial"
         animate="animate"
@@ -512,8 +507,8 @@ function BagScreen({
               const product = PRODUCTS.find(p => p.id === item.productId);
               if (!product) return null;
               return (
-                <motion.div 
-                  key={item.productId} 
+                <motion.div
+                  key={item.productId}
                   variants={itemVariants}
                   className="flex justify-between items-center border-b border-[#7F1D1D]/5 pb-4 last:border-0 last:pb-0"
                 >
@@ -525,7 +520,7 @@ function BagScreen({
                 </motion.div>
               );
             })}
-            
+
             <motion.div variants={itemVariants} className="pt-4 border-t-2 border-[#7F1D1D]/10">
               <div className="flex justify-between items-center mb-2">
                 <span className="text-lg font-bold">Total (sem frete)</span>
@@ -542,16 +537,16 @@ function BagScreen({
       <motion.div variants={containerVariants} initial="initial" animate="animate" className="space-y-4">
         <motion.h3 variants={itemVariants} className="text-xl font-bold px-1">Seus dados</motion.h3>
         <div className="space-y-3">
-          <motion.input 
+          <motion.input
             variants={itemVariants}
-            type="text" 
+            type="text"
             placeholder="Nome completo *"
             required
             value={customerInfo.name}
             onChange={e => setCustomerInfo(prev => ({ ...prev, name: e.target.value }))}
             className="w-full bg-white border-none rounded-xl p-4 shadow-sm focus:ring-2 focus:ring-[#7F1D1D] outline-none transition-shadow"
           />
-          <motion.textarea 
+          <motion.textarea
             variants={itemVariants}
             placeholder="Endereço completo (rua, número, complemento, bairro, cidade) *"
             required
@@ -560,9 +555,9 @@ function BagScreen({
             onChange={e => setCustomerInfo(prev => ({ ...prev, address: e.target.value }))}
             className="w-full bg-white border-none rounded-xl p-4 shadow-sm focus:ring-2 focus:ring-[#7F1D1D] outline-none transition-shadow"
           />
-          <motion.input 
+          <motion.input
             variants={itemVariants}
-            type="text" 
+            type="text"
             placeholder="Observações do pedido (opcional)"
             value={customerInfo.obs}
             onChange={e => setCustomerInfo(prev => ({ ...prev, obs: e.target.value }))}
@@ -571,7 +566,7 @@ function BagScreen({
         </div>
       </motion.div>
 
-      <motion.button 
+      <motion.button
         variants={itemVariants}
         whileHover={{ scale: 1.02 }}
         whileTap={{ scale: 0.98 }}
@@ -587,14 +582,14 @@ function BagScreen({
 
 function SuccessScreen({ onSend }: { onSend: () => void; key?: string }) {
   return (
-    <motion.div 
+    <motion.div
       variants={screenVariants}
       initial="initial"
       animate="animate"
       exit="exit"
       className="max-w-md mx-auto px-6 py-12 flex flex-col items-center justify-center min-h-screen text-center"
     >
-      <motion.div 
+      <motion.div
         initial={{ scale: 0, rotate: -180 }}
         animate={{ scale: 1, rotate: 0 }}
         transition={{ type: "spring", stiffness: 200, damping: 15, delay: 0.2 }}
@@ -602,21 +597,21 @@ function SuccessScreen({ onSend }: { onSend: () => void; key?: string }) {
       >
         <CheckCircle2 size={64} />
       </motion.div>
-      
-      <motion.h2 
+
+      <motion.h2
         variants={itemVariants}
         className="text-4xl font-bold mb-4"
       >
         PEDIDO REGISTRADO
       </motion.h2>
-      <motion.p 
+      <motion.p
         variants={itemVariants}
         className="text-lg mb-8 opacity-80"
       >
         Seu pedido foi registrado! Agora é só nos enviar pelo WhatsApp para finalizar.
       </motion.p>
 
-      <motion.button 
+      <motion.button
         variants={itemVariants}
         whileHover={{ scale: 1.02 }}
         whileTap={{ scale: 0.98 }}
@@ -627,7 +622,7 @@ function SuccessScreen({ onSend }: { onSend: () => void; key?: string }) {
         ENVIAR
       </motion.button>
 
-      <motion.div 
+      <motion.div
         variants={itemVariants}
         className="bg-white/95 backdrop-blur-sm p-8 rounded-3xl shadow-xl text-left border border-[#7F1D1D]/10 w-full"
       >
@@ -637,13 +632,13 @@ function SuccessScreen({ onSend }: { onSend: () => void; key?: string }) {
           <p>2️⃣ Coloque as esfihas numa forma 🥟</p>
           <p>3️⃣ Coloque no forno ou airfryer 🔥 a 120 graus por 15 minutinhos.</p>
           <p>4️⃣ Tire, espere 1 minutinho (se aguentar 😅) e aproveite!</p>
-          
+
           <p className="font-bold pt-2">Bom apetite! 😍</p>
-          
+
           <p className="text-red-700 font-medium bg-red-50 p-3 rounded-lg border border-red-100">
             ⚠️ Importante: não use o micro-ondas 🚫 — ele deixa a massa dura!
           </p>
-          
+
           <div className="pt-4 border-t border-[#7F1D1D]/10 text-xs opacity-70 italic">
             <p className="mb-1">✨ ✉️ E aqui aceitamos feedbacks sinceros!!</p>
             <p>Fique a vontade pra avaliar nossos produtos. Você é nosso termômetro de qualidade. Sua opinião é muito importante.</p>
@@ -654,13 +649,13 @@ function SuccessScreen({ onSend }: { onSend: () => void; key?: string }) {
   );
 }
 
-function RatingDialog({ 
-  product, 
-  onClose, 
-  onSave 
-}: { 
-  product: Esfiha; 
-  onClose: () => void; 
+function RatingDialog({
+  product,
+  onClose,
+  onSave
+}: {
+  product: Esfiha;
+  onClose: () => void;
   onSave: (score: number, comment: string) => void;
 }) {
   const [score, setScore] = useState(5);
@@ -668,7 +663,7 @@ function RatingDialog({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-sm">
-      <motion.div 
+      <motion.div
         initial={{ opacity: 0, scale: 0.9 }}
         animate={{ opacity: 1, scale: 1 }}
         exit={{ opacity: 0, scale: 0.9 }}
@@ -684,14 +679,14 @@ function RatingDialog({
         <div className="mb-8">
           <div className="flex justify-center gap-2 mb-4">
             {[1, 2, 3, 4, 5].map(star => (
-              <button 
-                key={star} 
+              <button
+                key={star}
                 onClick={() => setScore(star)}
                 className="transition-transform active:scale-125"
               >
-                <Star 
-                  size={40} 
-                  fill={star <= score ? "#EAB308" : "none"} 
+                <Star
+                  size={40}
+                  fill={star <= score ? "#EAB308" : "none"}
                   className={star <= score ? "text-[#EAB308]" : "text-gray-200"}
                 />
               </button>
@@ -706,7 +701,7 @@ function RatingDialog({
           </p>
         </div>
 
-        <textarea 
+        <textarea
           placeholder="Escreva um comentário (opcional)"
           value={comment}
           onChange={e => setComment(e.target.value)}
@@ -714,7 +709,7 @@ function RatingDialog({
           className="w-full bg-[#EAB308]/5 border-2 border-[#EAB308]/10 rounded-xl p-4 mb-6 focus:border-[#EAB308] outline-none transition-colors"
         />
 
-        <button 
+        <button
           onClick={() => onSave(score, comment)}
           className="w-full bg-[#7F1D1D] text-white py-4 rounded-xl font-bold text-lg shadow-lg active:scale-95 transition-transform"
         >
