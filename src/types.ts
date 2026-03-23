@@ -133,3 +133,13 @@ export interface ComboItem {
   productId: string;
   quantity: number;
 }
+
+export interface Reminder {
+  id: string;
+  title: string;
+  description?: string;
+  reminderDate: FirebaseTimestamp | Date;
+  createdAt: FirebaseTimestamp | Date;
+  isRead: boolean;
+  isCompleted: boolean;
+}

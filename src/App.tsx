@@ -24,6 +24,7 @@ import { db, collection, getDocs, addDoc, updateDoc, doc, serverTimestamp, query
 import { User as FirebaseUser } from 'firebase/auth';
 import type { Product, Rating, BagItem, Address, Customer, Coupon, Promotion } from './types';
 import { getCustomer, createCustomer, addLoyaltyPoints } from './services/CustomerService';
+import { fetchCEP, formatCEP as formatCEPUtil } from './services/CEPService';
 import LoginModal from './components/LoginModal';
 import CouponInput from './components/CouponInput';
 import { recordCouponUse } from './services/CouponService';
@@ -84,7 +85,7 @@ export default function App() {
   const [appliedDiscount, setAppliedDiscount] = useState(0);
   const [promotions, setPromotions] = useState<Promotion[]>([]);
   const [loadingPromotions, setLoadingPromotions] = useState(true);
-  const [errors, setErrors] = useState<{[key: string]: string}>({});
+  const [errors, setErrors] = useState<{ [key: string]: string }>({});
 
   const formatPhone = (value: string): string => {
     const digits = value.replace(/\D/g, '').slice(0, 11);
@@ -181,8 +182,8 @@ export default function App() {
   };
 
   const validateAll = (): boolean => {
-    const newErrors: {[key: string]: string} = {};
-    
+    const newErrors: { [key: string]: string } = {};
+
     const nameError = validateName(customerInfo.name);
     const phoneError = validatePhone(customerInfo.phone);
     const streetError = validateRequired(address.street || '', 'Rua');
@@ -911,12 +912,11 @@ function MenuScreen({
                 )}
               </div>
               {product.tags && product.tags[0] && (
-                <div className={`absolute top-3 left-3 px-2.5 py-1 rounded-full text-sm font-handwritten font-semibold shadow-sm ${
-                  product.tags[0] === 'Clássica' ? 'bg-[#C75B48] text-white' :
+                <div className={`absolute top-3 left-3 px-2.5 py-1 rounded-full text-sm font-handwritten font-semibold shadow-sm ${product.tags[0] === 'Clássica' ? 'bg-[#C75B48] text-white' :
                   product.tags[0] === 'Leve' ? 'bg-[#7BA05B] text-white' :
-                  product.tags[0] === 'Fit' ? 'bg-[#81C784] text-white' :
-                  'bg-white/90 text-[#5D4037]'
-                }`}>
+                    product.tags[0] === 'Fit' ? 'bg-[#81C784] text-white' :
+                      'bg-white/90 text-[#5D4037]'
+                  }`}>
                   {product.tags[0]}
                 </div>
               )}
@@ -1036,11 +1036,10 @@ function MenuScreen({
                 )}
               </div>
               {product.tags && product.tags[0] && (
-                <div className={`absolute top-3 left-3 px-2.5 py-1 rounded-full text-sm font-handwritten font-semibold shadow-sm ${
-                  product.tags[0] === 'Fit' ? 'bg-[#7BA05B] text-white' :
+                <div className={`absolute top-3 left-3 px-2.5 py-1 rounded-full text-sm font-handwritten font-semibold shadow-sm ${product.tags[0] === 'Fit' ? 'bg-[#7BA05B] text-white' :
                   product.tags[0] === 'Leve' ? 'bg-[#81C784] text-white' :
-                  'bg-white/90 text-[#5D4037]'
-                }`}>
+                    'bg-white/90 text-[#5D4037]'
+                  }`}>
                   {product.tags[0]}
                 </div>
               )}
@@ -1190,8 +1189,8 @@ function BagScreen({
   appliedDiscount: number;
   onApplyCoupon: (coupon: import('./types').Coupon, discount: number) => void;
   onRemoveCoupon: () => void;
-  errors: {[key: string]: string};
-  setErrors: React.Dispatch<React.SetStateAction<{[key: string]: string}>>;
+  errors: { [key: string]: string };
+  setErrors: React.Dispatch<React.SetStateAction<{ [key: string]: string }>>;
   formatPhone: (value: string) => string;
   formatCEP: (value: string) => string;
   validateName: (value: string) => string;
@@ -1201,6 +1200,7 @@ function BagScreen({
 }) {
   const tipKey = 'bag-signup-tip';
   const isTipDismissed = dismissedTips.has(tipKey);
+  const [loadingCEP, setLoadingCEP] = useState(false);
 
   const handleNameChange = (value: string) => {
     setCustomerInfo(prev => ({ ...prev, name: value }));
@@ -1250,11 +1250,51 @@ function BagScreen({
     setErrors(prev => ({ ...prev, state: error }));
   };
 
-  const handleCEPChange = (value: string) => {
-    const formatted = formatCEP(value);
+  const handleCEPChange = async (value: string) => {
+    const formatted = formatCEPUtil(value);
     setAddress(prev => ({ ...prev, zipCode: formatted }));
     const error = validateCEP(formatted);
     setErrors(prev => ({ ...prev, zipCode: error }));
+
+    // Busca endereço automaticamente quando CEP está completo
+    const cleanCEP = value.replace(/\D/g, '');
+    if (cleanCEP.length === 8 && !error) {
+      setLoadingCEP(true);
+      try {
+        const addressData = await fetchCEP(value);
+        if (addressData) {
+          setAddress(prev => ({
+            ...prev,
+            street: addressData.street,
+            neighborhood: addressData.neighborhood,
+            city: addressData.city,
+            state: addressData.state,
+            complement: addressData.complement || prev.complement,
+          }));
+          // Limpa erros dos campos preenchidos
+          setErrors(prev => ({
+            ...prev,
+            street: '',
+            neighborhood: '',
+            city: '',
+            state: '',
+          }));
+        } else {
+          setErrors(prev => ({
+            ...prev,
+            zipCode: 'CEP não encontrado. Por favor, preencha manualmente.',
+          }));
+        }
+      } catch (error) {
+        console.error('Erro ao buscar CEP:', error);
+        setErrors(prev => ({
+          ...prev,
+          zipCode: 'Erro ao buscar CEP. Tente novamente.',
+        }));
+      } finally {
+        setLoadingCEP(false);
+      }
+    }
   };
 
   const handleObsChange = (value: string) => {
@@ -1450,9 +1490,8 @@ function BagScreen({
               required
               value={customerInfo.name}
               onChange={e => handleNameChange(e.target.value)}
-              className={`w-full bg-white border rounded-xl p-4 shadow-sm focus:ring-2 focus:ring-[#C75B48]/30 focus:border-[#C75B48] outline-none transition-all ${
-                errors.name ? 'border-red-500' : 'border-[#F0E4DF]'
-              }`}
+              className={`w-full bg-white border rounded-xl p-4 shadow-sm focus:ring-2 focus:ring-[#C75B48]/30 focus:border-[#C75B48] outline-none transition-all ${errors.name ? 'border-red-500' : 'border-[#F0E4DF]'
+                }`}
             />
             {errors.name && (
               <p className="text-xs text-red-500 mt-1 flex items-center gap-1">
@@ -1467,9 +1506,8 @@ function BagScreen({
               placeholder="(11) 99999-9999"
               value={customerInfo.phone}
               onChange={e => handlePhoneChange(e.target.value)}
-              className={`w-full bg-white border rounded-xl p-4 shadow-sm focus:ring-2 focus:ring-[#C75B48]/30 focus:border-[#C75B48] outline-none transition-all ${
-                errors.phone ? 'border-red-500' : 'border-[#F0E4DF]'
-              }`}
+              className={`w-full bg-white border rounded-xl p-4 shadow-sm focus:ring-2 focus:ring-[#C75B48]/30 focus:border-[#C75B48] outline-none transition-all ${errors.phone ? 'border-red-500' : 'border-[#F0E4DF]'
+                }`}
             />
             {errors.phone && (
               <p className="text-xs text-red-500 mt-1 flex items-center gap-1">
@@ -1488,9 +1526,8 @@ function BagScreen({
               required
               value={address.street}
               onChange={e => handleStreetChange(e.target.value)}
-              className={`w-full bg-white border rounded-xl p-4 shadow-sm focus:ring-2 focus:ring-[#C75B48]/30 focus:border-[#C75B48] outline-none transition-all ${
-                errors.street ? 'border-red-500' : 'border-[#F0E4DF]'
-              }`}
+              className={`w-full bg-white border rounded-xl p-4 shadow-sm focus:ring-2 focus:ring-[#C75B48]/30 focus:border-[#C75B48] outline-none transition-all ${errors.street ? 'border-red-500' : 'border-[#F0E4DF]'
+                }`}
             />
             {errors.street && (
               <p className="text-xs text-red-500 mt-1 flex items-center gap-1">
@@ -1507,9 +1544,8 @@ function BagScreen({
                 required
                 value={address.number}
                 onChange={e => handleNumberChange(e.target.value)}
-                className={`w-full bg-white border rounded-xl p-4 shadow-sm focus:ring-2 focus:ring-[#C75B48]/30 focus:border-[#C75B48] outline-none transition-all ${
-                  errors.number ? 'border-red-500' : 'border-[#F0E4DF]'
-                }`}
+                className={`w-full bg-white border rounded-xl p-4 shadow-sm focus:ring-2 focus:ring-[#C75B48]/30 focus:border-[#C75B48] outline-none transition-all ${errors.number ? 'border-red-500' : 'border-[#F0E4DF]'
+                  }`}
               />
               {errors.number && (
                 <p className="text-xs text-red-500 mt-1 flex items-center gap-1">
@@ -1536,9 +1572,8 @@ function BagScreen({
               required
               value={address.neighborhood}
               onChange={e => handleNeighborhoodChange(e.target.value)}
-              className={`w-full bg-white border rounded-xl p-4 shadow-sm focus:ring-2 focus:ring-[#C75B48]/30 focus:border-[#C75B48] outline-none transition-all ${
-                errors.neighborhood ? 'border-red-500' : 'border-[#F0E4DF]'
-              }`}
+              className={`w-full bg-white border rounded-xl p-4 shadow-sm focus:ring-2 focus:ring-[#C75B48]/30 focus:border-[#C75B48] outline-none transition-all ${errors.neighborhood ? 'border-red-500' : 'border-[#F0E4DF]'
+                }`}
             />
             {errors.neighborhood && (
               <p className="text-xs text-red-500 mt-1 flex items-center gap-1">
@@ -1554,9 +1589,8 @@ function BagScreen({
                 placeholder="Cidade"
                 value={address.city}
                 onChange={e => handleCityChange(e.target.value)}
-                className={`w-full bg-white border rounded-xl p-4 shadow-sm focus:ring-2 focus:ring-[#C75B48]/30 focus:border-[#C75B48] outline-none transition-all ${
-                  errors.city ? 'border-red-500' : 'border-[#F0E4DF]'
-                }`}
+                className={`w-full bg-white border rounded-xl p-4 shadow-sm focus:ring-2 focus:ring-[#C75B48]/30 focus:border-[#C75B48] outline-none transition-all ${errors.city ? 'border-red-500' : 'border-[#F0E4DF]'
+                  }`}
               />
               {errors.city && (
                 <p className="text-xs text-red-500 mt-1 flex items-center gap-1">
@@ -1572,9 +1606,8 @@ function BagScreen({
                 placeholder="SP"
                 value={address.state}
                 onChange={e => handleStateChange(e.target.value)}
-                className={`w-full bg-white border rounded-xl p-4 shadow-sm focus:ring-2 focus:ring-[#C75B48]/30 focus:border-[#C75B48] outline-none transition-all ${
-                  errors.state ? 'border-red-500' : 'border-[#F0E4DF]'
-                }`}
+                className={`w-full bg-white border rounded-xl p-4 shadow-sm focus:ring-2 focus:ring-[#C75B48]/30 focus:border-[#C75B48] outline-none transition-all ${errors.state ? 'border-red-500' : 'border-[#F0E4DF]'
+                  }`}
               />
               {errors.state && (
                 <p className="text-xs text-red-500 mt-1 flex items-center gap-1">
@@ -1585,18 +1618,30 @@ function BagScreen({
           </motion.div>
           <motion.div variants={itemVariants}>
             <label className="text-xs font-medium text-[#8C7066] mb-1 block">CEP</label>
-            <input
-              type="text"
-              placeholder="09100-000"
-              value={address.zipCode}
-              onChange={e => handleCEPChange(e.target.value)}
-              className={`w-full bg-white border rounded-xl p-4 shadow-sm focus:ring-2 focus:ring-[#C75B48]/30 focus:border-[#C75B48] outline-none transition-all ${
-                errors.zipCode ? 'border-red-500' : 'border-[#F0E4DF]'
-              }`}
-            />
+            <div className="relative">
+              <input
+                type="text"
+                placeholder="09100-000"
+                value={address.zipCode}
+                onChange={e => handleCEPChange(e.target.value)}
+                disabled={loadingCEP}
+                className={`w-full bg-white border rounded-xl p-4 shadow-sm focus:ring-2 focus:ring-[#C75B48]/30 focus:border-[#C75B48] outline-none transition-all pr-12 ${errors.zipCode ? 'border-red-500' : 'border-[#F0E4DF]'
+                  } ${loadingCEP ? 'opacity-75 cursor-not-allowed' : ''}`}
+              />
+              {loadingCEP && (
+                <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                  <Loader2 size={20} className="animate-spin text-[#C75B48]" />
+                </div>
+              )}
+            </div>
             {errors.zipCode && (
               <p className="text-xs text-red-500 mt-1 flex items-center gap-1">
                 <AlertCircle size={12} /> {errors.zipCode}
+              </p>
+            )}
+            {!errors.zipCode && loadingCEP && (
+              <p className="text-xs text-[#C75B48] mt-1 flex items-center gap-1">
+                <Loader2 size={12} className="animate-spin" /> Buscando endereço...
               </p>
             )}
           </motion.div>
