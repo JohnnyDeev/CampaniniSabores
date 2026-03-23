@@ -111,6 +111,7 @@ const NAV_ITEMS = [
   { id: 'ratings', label: 'Avaliações', icon: Star },
   { id: 'reports', label: 'Relatórios', icon: BarChart3 },
   { id: 'reminders', label: 'Lembretes', icon: Bell },
+  { id: 'finance', label: 'Financeiro', icon: DollarSign },
   { id: 'settings', label: 'Configurações', icon: Settings },
 ];
 
@@ -961,6 +962,11 @@ export default function AdminApp() {
               onComplete={handleCompleteReminder}
               highlightId={highlightReminderId}
             />
+          )}
+
+          {/* Finance */}
+          {activeTab === 'finance' && (
+            <FinanceContent />
           )}
 
           {/* Settings */}
@@ -2870,6 +2876,345 @@ function RemindersContent({
               </button>
             </div>
           </motion.div>
+        </div>
+      )}
+    </motion.div>
+  );
+}
+
+function FinanceContent() {
+  const [activeTab, setActiveTab] = useState<'receivables' | 'payables' | 'summary'>('summary');
+  const [financialSummary, setFinancialSummary] = useState<{
+    totalReceivable: number;
+    totalReceived: number;
+    totalPending: number;
+    totalOverdue: number;
+    totalPayable: number;
+    totalPaid: number;
+    balance: number;
+  } | null>(null);
+  const [receivables, setReceivables] = useState<any[]>([]);
+  const [payables, setPayables] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [showAddReceivable, setShowAddReceivable] = useState(false);
+  const [showAddPayable, setShowAddPayable] = useState(false);
+
+  const formatCurrency = (value: number) => new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
+
+  const loadData = async () => {
+    setLoading(true);
+    try {
+      const [summary, receivablesData, payablesData] = await Promise.all([
+        import('./services/FinanceService').then(m => m.getFinancialSummary()),
+        import('./services/FinanceService').then(m => m.getReceivables()),
+        import('./services/FinanceService').then(m => m.getPayables())
+      ]);
+
+      setFinancialSummary(summary);
+      setReceivables(receivablesData);
+      setPayables(payablesData);
+    } catch (error) {
+      console.error('Erro ao carregar dados financeiros:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const handleMarkReceivableAsPaid = async (id: string) => {
+    try {
+      const { markReceivableAsPaid } = await import('./services/FinanceService');
+      await markReceivableAsPaid(id);
+      await loadData();
+    } catch (error) {
+      console.error('Erro ao marcar como pago:', error);
+      alert('Erro ao marcar conta como paga');
+    }
+  };
+
+  const handleMarkPayableAsPaid = async (id: string) => {
+    try {
+      const { markPayableAsPaid } = await import('./services/FinanceService');
+      await markPayableAsPaid(id);
+      await loadData();
+    } catch (error) {
+      console.error('Erro ao marcar como pago:', error);
+      alert('Erro ao marcar conta como paga');
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <Loader2 size={48} className="animate-spin text-[#C75B48]" />
+      </div>
+    );
+  }
+
+  return (
+    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
+      {/* Tabs */}
+      <div className="flex gap-2 mb-6">
+        <button
+          onClick={() => setActiveTab('summary')}
+          className={`px-4 py-2 rounded-xl font-medium transition-colors ${activeTab === 'summary'
+              ? 'bg-[#C75B48] text-white'
+              : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'
+            }`}
+        >
+          Visão Geral
+        </button>
+        <button
+          onClick={() => setActiveTab('receivables')}
+          className={`px-4 py-2 rounded-xl font-medium transition-colors ${activeTab === 'receivables'
+              ? 'bg-[#C75B48] text-white'
+              : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'
+            }`}
+        >
+          Contas a Receber
+        </button>
+        <button
+          onClick={() => setActiveTab('payables')}
+          className={`px-4 py-2 rounded-xl font-medium transition-colors ${activeTab === 'payables'
+              ? 'bg-[#C75B48] text-white'
+              : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'
+            }`}
+        >
+          Contas a Pagar
+        </button>
+      </div>
+
+      {/* Summary Tab */}
+      {activeTab === 'summary' && (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {/* Receber */}
+          <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+            <h3 className="text-sm font-medium text-gray-500 mb-4">Contas a Receber</h3>
+            <div className="space-y-3">
+              <div>
+                <p className="text-xs text-gray-400">Total</p>
+                <p className="text-2xl font-bold text-gray-800">{formatCurrency(financialSummary?.totalReceivable || 0)}</p>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-green-600">Recebido: {formatCurrency(financialSummary?.totalReceived || 0)}</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-amber-600">Pendente: {formatCurrency(financialSummary?.totalPending || 0)}</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-red-600">Atrasado: {formatCurrency(financialSummary?.totalOverdue || 0)}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Pagar */}
+          <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+            <h3 className="text-sm font-medium text-gray-500 mb-4">Contas a Pagar</h3>
+            <div className="space-y-3">
+              <div>
+                <p className="text-xs text-gray-400">Total</p>
+                <p className="text-2xl font-bold text-gray-800">{formatCurrency(financialSummary?.totalPayable || 0)}</p>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-green-600">Pago: {formatCurrency(financialSummary?.totalPaid || 0)}</span>
+              </div>
+              <div className="flex justify-between text-sm">
+                <span className="text-amber-600">Pendente: {formatCurrency((financialSummary?.totalPayable || 0) - (financialSummary?.totalPaid || 0))}</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Saldo */}
+          <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
+            <h3 className="text-sm font-medium text-gray-500 mb-4">Saldo do Caixa</h3>
+            <div className="space-y-3">
+              <div>
+                <p className="text-xs text-gray-400">Saldo Atual</p>
+                <p className={`text-2xl font-bold ${(financialSummary?.balance || 0) >= 0 ? 'text-green-600' : 'text-red-600'
+                  }`}>
+                  {formatCurrency(financialSummary?.balance || 0)}
+                </p>
+              </div>
+              <div className="pt-3 border-t border-gray-100">
+                <p className="text-xs text-gray-400 mb-1">Recebido - Pago</p>
+                <p className="text-sm text-gray-600">
+                  {formatCurrency(financialSummary?.totalReceived || 0)} - {formatCurrency(financialSummary?.totalPaid || 0)}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          {/* Últimas Movimentações */}
+          <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 md:col-span-3">
+            <h3 className="text-sm font-medium text-gray-500 mb-4">Últimas Contas a Receber</h3>
+            {receivables.length === 0 ? (
+              <p className="text-sm text-gray-400 text-center py-8">Nenhuma conta a receber</p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="text-left text-gray-500 border-b border-gray-100">
+                      <th className="pb-3 font-medium">Pedido</th>
+                      <th className="pb-3 font-medium">Cliente</th>
+                      <th className="pb-3 font-medium">Vencimento</th>
+                      <th className="pb-3 font-medium">Valor</th>
+                      <th className="pb-3 font-medium">Status</th>
+                      <th className="pb-3 font-medium text-right">Ações</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {receivables.slice(0, 5).map(rec => (
+                      <tr key={rec.id} className="border-b border-gray-50">
+                        <td className="py-3 text-gray-600">#{rec.orderNumber}</td>
+                        <td className="py-3 text-gray-800 font-medium">{rec.customerName}</td>
+                        <td className="py-3 text-gray-600">{new Date(rec.dueDate).toLocaleDateString('pt-BR')}</td>
+                        <td className="py-3 text-right font-bold text-[#C75B48]">{formatCurrency(rec.amount)}</td>
+                        <td className="py-3 text-center">
+                          <span className={`px-2 py-1 rounded-full text-xs font-medium ${rec.status === 'paid' ? 'bg-green-100 text-green-700' :
+                              rec.status === 'overdue' ? 'bg-red-100 text-red-700' :
+                                'bg-amber-100 text-amber-700'
+                            }`}>
+                            {rec.status === 'paid' ? 'Pago' : rec.status === 'overdue' ? 'Atrasado' : 'Pendente'}
+                          </span>
+                        </td>
+                        <td className="py-3 text-right">
+                          {rec.status === 'pending' && (
+                            <button
+                              onClick={() => handleMarkReceivableAsPaid(rec.id)}
+                              className="px-3 py-1 bg-green-500 text-white rounded-lg text-xs font-medium hover:bg-green-600"
+                            >
+                              Marcar como Pago
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Receivables Tab */}
+      {activeTab === 'receivables' && (
+        <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
+          <div className="p-6 border-b border-gray-100 flex items-center justify-between">
+            <h3 className="font-semibold text-gray-800">Contas a Receber</h3>
+            <button
+              onClick={() => setShowAddReceivable(true)}
+              className="flex items-center gap-2 bg-[#C75B48] text-white px-4 py-2 rounded-xl text-sm font-medium hover:bg-[#A84838]"
+            >
+              <Plus size={18} /> Nova Conta
+            </button>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-left text-gray-500 border-b border-gray-100">
+                  <th className="px-6 py-4 font-medium">Pedido</th>
+                  <th className="px-6 py-4 font-medium">Cliente</th>
+                  <th className="px-6 py-4 font-medium">Vencimento</th>
+                  <th className="px-6 py-4 font-medium">Valor</th>
+                  <th className="px-6 py-4 font-medium">Status</th>
+                  <th className="px-6 py-4 font-medium text-right">Ações</th>
+                </tr>
+              </thead>
+              <tbody>
+                {receivables.map(rec => (
+                  <tr key={rec.id} className="border-b border-gray-50 hover:bg-gray-50">
+                    <td className="px-6 py-4 text-gray-600">#{rec.orderNumber}</td>
+                    <td className="px-6 py-4 text-gray-800 font-medium">{rec.customerName}</td>
+                    <td className="px-6 py-4 text-gray-600">{new Date(rec.dueDate).toLocaleDateString('pt-BR')}</td>
+                    <td className="px-6 py-4 text-right font-bold text-[#C75B48]">{formatCurrency(rec.amount)}</td>
+                    <td className="px-6 py-4 text-center">
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${rec.status === 'paid' ? 'bg-green-100 text-green-700' :
+                          rec.status === 'overdue' ? 'bg-red-100 text-red-700' :
+                            'bg-amber-100 text-amber-700'
+                        }`}>
+                        {rec.status === 'paid' ? 'Pago' : rec.status === 'overdue' ? 'Atrasado' : 'Pendente'}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 text-right">
+                      {rec.status === 'pending' && (
+                        <button
+                          onClick={() => handleMarkReceivableAsPaid(rec.id)}
+                          className="px-3 py-1 bg-green-500 text-white rounded-lg text-xs font-medium hover:bg-green-600"
+                        >
+                          Marcar como Pago
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {/* Payables Tab */}
+      {activeTab === 'payables' && (
+        <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
+          <div className="p-6 border-b border-gray-100 flex items-center justify-between">
+            <h3 className="font-semibold text-gray-800">Contas a Pagar</h3>
+            <button
+              onClick={() => setShowAddPayable(true)}
+              className="flex items-center gap-2 bg-[#C75B48] text-white px-4 py-2 rounded-xl text-sm font-medium hover:bg-[#A84838]"
+            >
+              <Plus size={18} /> Nova Conta
+            </button>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="text-left text-gray-500 border-b border-gray-100">
+                  <th className="px-6 py-4 font-medium">Descrição</th>
+                  <th className="px-6 py-4 font-medium">Categoria</th>
+                  <th className="px-6 py-4 font-medium">Vencimento</th>
+                  <th className="px-6 py-4 font-medium">Valor</th>
+                  <th className="px-6 py-4 font-medium">Status</th>
+                  <th className="px-6 py-4 font-medium text-right">Ações</th>
+                </tr>
+              </thead>
+              <tbody>
+                {payables.map(pay => (
+                  <tr key={pay.id} className="border-b border-gray-50 hover:bg-gray-50">
+                    <td className="px-6 py-4 text-gray-800 font-medium">{pay.description}</td>
+                    <td className="px-6 py-4">
+                      <span className="px-2 py-1 bg-gray-100 text-gray-600 rounded text-xs capitalize">
+                        {pay.category}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 text-gray-600">{new Date(pay.dueDate).toLocaleDateString('pt-BR')}</td>
+                    <td className="px-6 py-4 text-right font-bold text-[#C75B48]">{formatCurrency(pay.amount)}</td>
+                    <td className="px-6 py-4 text-center">
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${pay.status === 'paid' ? 'bg-green-100 text-green-700' :
+                          pay.status === 'overdue' ? 'bg-red-100 text-red-700' :
+                            'bg-amber-100 text-amber-700'
+                        }`}>
+                        {pay.status === 'paid' ? 'Pago' : pay.status === 'overdue' ? 'Atrasado' : 'Pendente'}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 text-right">
+                      {pay.status === 'pending' && (
+                        <button
+                          onClick={() => handleMarkPayableAsPaid(pay.id)}
+                          className="px-3 py-1 bg-green-500 text-white rounded-lg text-xs font-medium hover:bg-green-600"
+                        >
+                          Marcar como Pago
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
     </motion.div>
