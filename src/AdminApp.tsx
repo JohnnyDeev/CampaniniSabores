@@ -63,6 +63,7 @@ import { checkIsAdmin, addAdmin, removeAdmin, getAllAdmins, getAdminCount, findU
 import { getReminders, createReminder, deleteReminder, markReminderAsCompleted, markAllRemindersAsRead } from './services/ReminderService';
 import { getReportStats, getSalesByDateRange, getTopProducts, getMonthlyRevenue, getDateRange, exportToCSV, type SalesData, type ProductSales, type ReportStats } from './services/ReportService';
 import { uploadProductImage, validateImageFile, formatFileSize, type UploadProgress } from './services/ImageUploadService';
+import ProductionManager from './components/ProductionManager';
 import type { Reminder } from './types';
 
 type FirebaseTimestamp = { toDate: () => Date };
@@ -105,6 +106,7 @@ const NAV_ITEMS = [
   { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { id: 'orders', label: 'Pedidos', icon: ShoppingCart },
   { id: 'products', label: 'Produtos', icon: ShoppingBag },
+  { id: 'production', label: 'Produção', icon: Package },
   { id: 'coupons', label: 'Cupons', icon: Ticket },
   { id: 'promotions', label: 'Promoções', icon: PackageSearch },
   { id: 'customers', label: 'Clientes', icon: Users },
@@ -888,6 +890,11 @@ export default function AdminApp() {
                 setShowProductModal(true);
               }}
             />
+          )}
+
+          {/* Production */}
+          {activeTab === 'production' && (
+            <ProductionManager />
           )}
 
           {/* Coupons */}
@@ -2961,8 +2968,8 @@ function FinanceContent() {
         <button
           onClick={() => setActiveTab('summary')}
           className={`px-4 py-2 rounded-xl font-medium transition-colors ${activeTab === 'summary'
-              ? 'bg-[#C75B48] text-white'
-              : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'
+            ? 'bg-[#C75B48] text-white'
+            : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'
             }`}
         >
           Visão Geral
@@ -2970,8 +2977,8 @@ function FinanceContent() {
         <button
           onClick={() => setActiveTab('receivables')}
           className={`px-4 py-2 rounded-xl font-medium transition-colors ${activeTab === 'receivables'
-              ? 'bg-[#C75B48] text-white'
-              : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'
+            ? 'bg-[#C75B48] text-white'
+            : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'
             }`}
         >
           Contas a Receber
@@ -2979,8 +2986,8 @@ function FinanceContent() {
         <button
           onClick={() => setActiveTab('payables')}
           className={`px-4 py-2 rounded-xl font-medium transition-colors ${activeTab === 'payables'
-              ? 'bg-[#C75B48] text-white'
-              : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'
+            ? 'bg-[#C75B48] text-white'
+            : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'
             }`}
         >
           Contas a Pagar
@@ -3074,8 +3081,8 @@ function FinanceContent() {
                         <td className="py-3 text-right font-bold text-[#C75B48]">{formatCurrency(rec.amount)}</td>
                         <td className="py-3 text-center">
                           <span className={`px-2 py-1 rounded-full text-xs font-medium ${rec.status === 'paid' ? 'bg-green-100 text-green-700' :
-                              rec.status === 'overdue' ? 'bg-red-100 text-red-700' :
-                                'bg-amber-100 text-amber-700'
+                            rec.status === 'overdue' ? 'bg-red-100 text-red-700' :
+                              'bg-amber-100 text-amber-700'
                             }`}>
                             {rec.status === 'paid' ? 'Pago' : rec.status === 'overdue' ? 'Atrasado' : 'Pendente'}
                           </span>
@@ -3133,8 +3140,8 @@ function FinanceContent() {
                     <td className="px-6 py-4 text-right font-bold text-[#C75B48]">{formatCurrency(rec.amount)}</td>
                     <td className="px-6 py-4 text-center">
                       <span className={`px-2 py-1 rounded-full text-xs font-medium ${rec.status === 'paid' ? 'bg-green-100 text-green-700' :
-                          rec.status === 'overdue' ? 'bg-red-100 text-red-700' :
-                            'bg-amber-100 text-amber-700'
+                        rec.status === 'overdue' ? 'bg-red-100 text-red-700' :
+                          'bg-amber-100 text-amber-700'
                         }`}>
                         {rec.status === 'paid' ? 'Pago' : rec.status === 'overdue' ? 'Atrasado' : 'Pendente'}
                       </span>
@@ -3194,8 +3201,8 @@ function FinanceContent() {
                     <td className="px-6 py-4 text-right font-bold text-[#C75B48]">{formatCurrency(pay.amount)}</td>
                     <td className="px-6 py-4 text-center">
                       <span className={`px-2 py-1 rounded-full text-xs font-medium ${pay.status === 'paid' ? 'bg-green-100 text-green-700' :
-                          pay.status === 'overdue' ? 'bg-red-100 text-red-700' :
-                            'bg-amber-100 text-amber-700'
+                        pay.status === 'overdue' ? 'bg-red-100 text-red-700' :
+                          'bg-amber-100 text-amber-700'
                         }`}>
                         {pay.status === 'paid' ? 'Pago' : pay.status === 'overdue' ? 'Atrasado' : 'Pendente'}
                       </span>

@@ -190,3 +190,70 @@ export interface ExpenseCategory {
   color?: string; // Cor para visualização
   type: 'fixo' | 'variavel';
 }
+
+// =====================
+// FICHA TÉCNICA / CUSTOS
+// =====================
+
+export type IngredientUnit = 'g' | 'kg' | 'ml' | 'L' | 'unidade' | 'pacote' | 'saco';
+
+export interface Ingredient {
+  id: string;
+  name: string;
+  category: 'farinha' | 'carne' | 'queijo' | 'tempero' | 'bebida' | 'embalagem' | 'outros';
+  purchaseUnit: IngredientUnit; // Unidade de compra (kg, L, etc.)
+  purchasePrice: number; // Preço pago na compra
+  purchaseQuantity: number; // Quantidade na embalagem comprada
+  currentStock: number; // Estoque atual
+  stockUnit: IngredientUnit; // Unidade do estoque (pode ser diferente da compra)
+  minStock: number; // Estoque mínimo para alerta
+  supplier?: string; // Fornecedor
+  lastPurchaseDate?: Date;
+  createdAt: Date;
+}
+
+export interface RecipeIngredient {
+  ingredientId: string;
+  ingredientName: string;
+  quantity: number;
+  unit: IngredientUnit;
+  cost: number; // Custo calculado (quantity * custo unitário)
+}
+
+export interface ProductRecipe {
+  id: string;
+  productId: string;
+  productName: string;
+  ingredients: RecipeIngredient[];
+  totalCost: number; // Soma de todos os ingredientes
+  yield: number; // Quantas unidades a receita rende (ex: 40 esfihas)
+  costPerUnit: number; // Custo por unidade (totalCost / yield)
+  salePrice: number; // Preço de venda
+  profitMargin: number; // Margem de lucro em porcentagem
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface StockMovement {
+  id: string;
+  ingredientId: string;
+  ingredientName: string;
+  type: 'entrada' | 'saida' | 'ajuste' | 'perda';
+  quantity: number;
+  unit: IngredientUnit;
+  reason?: string; // Motivo do movimento
+  orderId?: string; // Se for saída por produção
+  createdAt: Date;
+  createdBy?: string; // UID de quem fez o movimento
+}
+
+export interface ShoppingListItem {
+  ingredientId: string;
+  ingredientName: string;
+  requiredQuantity: number;
+  unit: IngredientUnit;
+  inStock: number;
+  toBuy: number; // requiredQuantity - inStock
+  estimatedCost: number;
+  supplier?: string;
+}
