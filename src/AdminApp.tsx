@@ -101,36 +101,6 @@ interface Order {
   loyaltyPointsEarned?: number;
 }
 
-const PRODUCTS_MOCK = [
-  { id: '1', name: 'Esfiha de Carne Clássica', price: 30, sales: 142, rating: 4.8, active: true },
-  { id: '2', name: 'Esfiha Queijo com Ricota', price: 30, sales: 98, rating: 4.6, active: true },
-  { id: '3', name: 'Esfiha Frango com Catupiry', price: 30, sales: 125, rating: 4.9, active: true },
-  { id: '4', name: 'Esfiha Calabresa com Catupiry', price: 30, sales: 87, rating: 4.7, active: true },
-  { id: '5', name: 'Esfiha Palmito Cremoso', price: 30, sales: 45, rating: 4.5, active: true },
-  { id: '6', name: 'Espinafre com Tomate Seco', price: 30, sales: 32, rating: 4.4, active: true },
-  { id: '7', name: 'Esfiha Escarola Refogada', price: 30, sales: 28, rating: 4.3, active: true },
-];
-
-const ORDERS_MOCK: Order[] = [
-  { id: 'ord1', customerName: 'Maria Santos', customerAddress: 'Rua das Flores, 123 - Jardim Primavera', customerObs: '', items: [{ productId: '1', quantity: 2 }, { productId: '3', quantity: 1 }], total: 90, status: 'novo', createdAt: new Date(), whatsappSent: true, paid: false },
-  { id: 'ord2', customerName: 'João Silva', customerAddress: 'Av. Brasil, 456 - Centro', customerObs: 'Sem cebola', items: [{ productId: '4', quantity: 3 }], total: 90, status: 'producao', createdAt: new Date(Date.now() - 3600000), whatsappSent: true, paid: false },
-  { id: 'ord3', customerName: 'Ana Oliveira', customerAddress: 'Rua do Sol, 789 - Vila Nova', customerObs: '', items: [{ productId: '1', quantity: 1 }, { productId: '2', quantity: 1 }, { productId: '6', quantity: 1 }], total: 90, status: 'saiu', createdAt: new Date(Date.now() - 7200000), whatsappSent: true, paid: false },
-  { id: 'ord4', customerName: 'Carlos Mendes', customerAddress: 'Alameda das Palmeiras, 321 - Parque', customerObs: 'Entregar após 18h', items: [{ productId: '3', quantity: 2 }, { productId: '5', quantity: 1 }], total: 90, status: 'entregue', createdAt: new Date(Date.now() - 86400000), whatsappSent: true, paid: false },
-];
-
-const RATINGS_MOCK = [
-  { id: '1', productName: 'Esfiha de Carne Clássica', userName: 'Maria', score: 5, comment: 'A melhor esfiha que já provei!', createdAt: new Date() },
-  { id: '2', productName: 'Esfiha Frango com Catupiry', userName: 'João', score: 4, comment: 'Muito bom, mas poderia ser maior', createdAt: new Date(Date.now() - 86400000) },
-  { id: '3', productName: 'Esfiha Queijo com Ricota', userName: 'Ana', score: 5, comment: 'Perfeito para o lanche da tarde', createdAt: new Date(Date.now() - 172800000) },
-];
-
-const CUSTOMERS_MOCK = [
-  { id: '1', name: 'Maria Santos', email: 'maria@email.com', orders: 12, totalSpent: 1080, lastOrder: new Date(), fidelity: 3 },
-  { id: '2', name: 'João Silva', email: 'joao@email.com', orders: 8, totalSpent: 720, lastOrder: new Date(Date.now() - 86400000), fidelity: 2 },
-  { id: '3', name: 'Ana Oliveira', email: 'ana@email.com', orders: 5, totalSpent: 450, lastOrder: new Date(Date.now() - 172800000), fidelity: 1 },
-  { id: '4', name: 'Carlos Mendes', email: 'carlos@email.com', orders: 15, totalSpent: 1350, lastOrder: new Date(Date.now() - 259200000), fidelity: 3 },
-];
-
 const NAV_ITEMS = [
   { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
   { id: 'orders', label: 'Pedidos', icon: ShoppingCart },
@@ -1115,26 +1085,48 @@ function DashboardContent({ totalRevenue, totalOrders, avgRating, newOrders, loa
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
         <div className="lg:col-span-2 bg-white rounded-2xl p-6 shadow-sm">
           <div className="flex items-center justify-between mb-6">
-            <h3 className="font-semibold text-gray-800">Pedidos por Dia</h3>
-            <select className="text-sm border-none bg-gray-100 rounded-lg px-3 py-1.5 text-gray-600">
-              <option>Últimos 7 dias</option>
-              <option>Últimos 30 dias</option>
-              <option>Este mês</option>
-            </select>
+            <h3 className="font-semibold text-gray-800">Pedidos por Dia (Últimos 7 dias)</h3>
           </div>
-          <div className="h-64 flex items-end justify-between gap-2">
-            {[65, 45, 78, 52, 90, 68, 85].map((value, i) => (
-              <div key={i} className="flex-1 flex flex-col items-center gap-2">
-                <div
-                  className="w-full bg-gradient-to-t from-[#C75B48] to-[#E8A849] rounded-t-lg transition-all hover:opacity-80"
-                  style={{ height: `${value}%` }}
-                />
-                <span className="text-xs text-gray-400">
-                  {['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'][i]}
-                </span>
+          {(() => {
+            // Calcula pedidos dos últimos 7 dias
+            const last7Days = Array.from({ length: 7 }, (_, i) => {
+              const date = new Date();
+              date.setDate(date.getDate() - (6 - i));
+              date.setHours(0, 0, 0, 0);
+              return date;
+            });
+
+            const ordersByDay = last7Days.map(date => {
+              const dayOrders = recentOrders.filter(order => {
+                const orderDate = toDate(order.createdAt);
+                return orderDate.toDateString() === date.toDateString();
+              });
+              return {
+                date,
+                count: dayOrders.length,
+                dayName: date.toLocaleDateString('pt-BR', { weekday: 'short' })
+              };
+            });
+
+            const maxCount = Math.max(...ordersByDay.map(d => d.count), 1);
+
+            return (
+              <div className="h-64 flex items-end justify-between gap-2">
+                {ordersByDay.map((day, i) => (
+                  <div key={i} className="flex-1 flex flex-col items-center gap-2">
+                    <div
+                      className="w-full bg-gradient-to-t from-[#C75B48] to-[#E8A849] rounded-t-lg transition-all hover:opacity-80"
+                      style={{ height: `${(day.count / maxCount) * 180}px` }}
+                      title={`${day.count} pedidos`}
+                    />
+                    <span className="text-xs text-gray-400 capitalize">
+                      {day.dayName.replace('.', '')}
+                    </span>
+                  </div>
+                ))}
               </div>
-            ))}
-          </div>
+            );
+          })()}
         </div>
 
         <div className="bg-white rounded-2xl p-6 shadow-sm">
