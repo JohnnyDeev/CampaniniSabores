@@ -1,6 +1,37 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=Playfair+Display:wght@400;500;600;700&family=Caveat:wght@400;500;600;700&display=swap');
 @import "tailwindcss";
 
 @theme {
-  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "DM Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-serif: "Playfair Display", ui-serif, Georgia, serif;
+  --font-handwritten: "Caveat", cursive;
+  --font-size-base: 1.125rem;
+  
+  --color-cream: #FFF8F5;
+  --color-cream-dark: #F5EDE8;
+  --color-terracotta: #C75B48;
+  --color-terracotta-dark: #A84838;
+  --color-terracotta-light: #F0C4B8;
+  --color-coral: #E07A5F;
+  --color-coral-pastel: #F8D4CC;
+  --color-amber: #E8A849;
+  --color-amber-light: #F5DFB0;
+  --color-chocolate: #5D4037;
+  --color-text: #3D2A24;
+  --color-text-muted: #8C7066;
+  --color-gold: #D4A574;
+  --color-gold-light: #F5E6D0;
+  --color-rose: #D4A5A5;
+  --color-rose-light: #F5E0E0;
+  --color-card: #FFFFFF;
+  --color-border: #F0E4DF;
+}
+
+body {
+  font-size: 18px;
+  line-height: 1.7;
+}
+
+h1, h2, h3 {
+  font-family: var(--font-handwritten);
 }

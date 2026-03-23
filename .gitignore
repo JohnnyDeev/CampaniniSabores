@@ -6,3 +6,12 @@ coverage/
 *.log
 .env*
 !.env.example
+.firebase/
+firebase.json
+firestore.indexes.json
+firestore.rules
+storage.rules
+setup-admin.js
+public/
+nul
+"git comands para atualizar site.txt"
