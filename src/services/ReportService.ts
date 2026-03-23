@@ -125,6 +125,7 @@ export async function getOrdersByDateRange(start: Date, end: Date): Promise<Orde
       const data = doc.data();
       return {
         id: doc.id,
+        orderNumber: data.orderNumber || 0,
         customerId: data.customerId,
         customerName: data.customerName,
         customerEmail: data.customerEmail,
@@ -132,12 +133,14 @@ export async function getOrdersByDateRange(start: Date, end: Date): Promise<Orde
         customerAddress: data.customerAddress,
         customerAddressStructured: data.customerAddressStructured,
         customerObs: data.customerObs || '',
+        deliveryDate: data.deliveryDate?.toDate ? data.deliveryDate.toDate() : null,
         items: data.items || [],
         total: data.total || 0,
         subtotal: data.subtotal,
         status: data.status || 'novo',
         paid: data.paid ?? false,
         paidAt: data.paidAt,
+        paymentMethod: data.paymentMethod,
         createdAt: data.createdAt,
         whatsappSent: data.whatsappSent ?? false,
         couponCode: data.couponCode,

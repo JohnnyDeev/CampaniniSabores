@@ -9,12 +9,14 @@ import {
   orderBy,
   where,
   serverTimestamp,
-  onSnapshot
+  onSnapshot,
+  Timestamp
 } from 'firebase/firestore';
 import { db } from '../firebase';
 import type { Order } from '../types';
 import { toDate } from '../types';
 import { addLoyaltyPoints } from './CustomerService';
+import { createReceivable } from './FinanceService';
 
 export async function getOrders(): Promise<Order[]> {
   const ref = collection(db, 'orders');
@@ -24,6 +26,7 @@ export async function getOrders(): Promise<Order[]> {
     const data = d.data();
     return {
       id: d.id,
+      orderNumber: data.orderNumber || 0,
       customerId: data.customerId,
       customerName: data.customerName,
       customerEmail: data.customerEmail,
@@ -31,12 +34,14 @@ export async function getOrders(): Promise<Order[]> {
       customerAddress: data.customerAddress,
       customerAddressStructured: data.customerAddressStructured,
       customerObs: data.customerObs || '',
+      deliveryDate: data.deliveryDate?.toDate ? data.deliveryDate.toDate() : null,
       items: data.items || [],
       total: data.total || 0,
       subtotal: data.subtotal,
       status: data.status || 'novo',
       paid: data.paid ?? false,
       paidAt: data.paidAt,
+      paymentMethod: data.paymentMethod,
       createdAt: data.createdAt,
       whatsappSent: data.whatsappSent ?? false,
       couponCode: data.couponCode,
@@ -53,6 +58,7 @@ export async function getOrderById(id: string): Promise<Order | null> {
   const data = snap.data();
   return {
     id: snap.id,
+    orderNumber: data.orderNumber || 0,
     customerId: data.customerId,
     customerName: data.customerName,
     customerEmail: data.customerEmail,
@@ -60,12 +66,14 @@ export async function getOrderById(id: string): Promise<Order | null> {
     customerAddress: data.customerAddress,
     customerAddressStructured: data.customerAddressStructured,
     customerObs: data.customerObs || '',
+    deliveryDate: data.deliveryDate?.toDate ? data.deliveryDate.toDate() : null,
     items: data.items || [],
     total: data.total || 0,
     subtotal: data.subtotal,
     status: data.status || 'novo',
     paid: data.paid ?? false,
     paidAt: data.paidAt,
+    paymentMethod: data.paymentMethod,
     createdAt: data.createdAt,
     whatsappSent: data.whatsappSent ?? false,
     couponCode: data.couponCode,
@@ -91,6 +99,7 @@ export async function getOrdersByCustomer(customerId: string): Promise<Order[]> 
     const data = d.data();
     return {
       id: d.id,
+      orderNumber: data.orderNumber || 0,
       customerId: data.customerId,
       customerName: data.customerName,
       customerEmail: data.customerEmail,
@@ -98,12 +107,14 @@ export async function getOrdersByCustomer(customerId: string): Promise<Order[]> 
       customerAddress: data.customerAddress,
       customerAddressStructured: data.customerAddressStructured,
       customerObs: data.customerObs || '',
+      deliveryDate: data.deliveryDate?.toDate ? data.deliveryDate.toDate() : null,
       items: data.items || [],
       total: data.total || 0,
       subtotal: data.subtotal,
       status: data.status || 'novo',
       paid: data.paid ?? false,
       paidAt: data.paidAt,
+      paymentMethod: data.paymentMethod,
       createdAt: data.createdAt,
       whatsappSent: data.whatsappSent ?? false,
       couponCode: data.couponCode,
@@ -163,13 +174,39 @@ export async function getOrderStats() {
   };
 }
 
-export async function markOrderAsPaid(orderId: string, customerId: string, points: number, orderTotal: number): Promise<void> {
+export async function markOrderAsPaid(
+  orderId: string,
+  customerId: string,
+  points: number,
+  orderTotal: number,
+  paymentMethod?: string
+): Promise<void> {
   const ref = doc(db, 'orders', orderId);
   await updateDoc(ref, {
     paid: true,
     paidAt: serverTimestamp(),
+    paymentMethod,
     loyaltyPointsEarned: points,
   });
+
+  // Marcar conta a receber como paga
+  try {
+    const receivablesRef = collection(db, 'receivables');
+    const q = query(receivablesRef, where('orderId', '==', orderId));
+    const snapshot = await getDocs(q);
+
+    if (!snapshot.empty) {
+      const receivableDoc = snapshot.docs[0];
+      await updateDoc(doc(db, 'receivables', receivableDoc.id), {
+        status: 'paid',
+        paidAt: serverTimestamp(),
+        paymentMethod,
+      });
+    }
+  } catch (error) {
+    console.error('Erro ao atualizar conta a receber:', error);
+    // Não lança erro para não quebrar o fluxo principal
+  }
 
   if (customerId) {
     await addLoyaltyPoints(customerId, points, orderTotal);

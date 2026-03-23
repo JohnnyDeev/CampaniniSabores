@@ -30,12 +30,15 @@ export interface Customer {
   loyaltyPointsEarned?: number;
   totalSpent: number;
   orderCount: number;
+  tags?: string[]; // Tags para segmentação (ex: 'handebol', 'imcd', 'vip')
+  source?: string; // Origem principal do cliente
   createdAt: Date;
   lastOrderAt?: Date;
 }
 
 export interface Product {
   id: string;
+  code?: string; // Código numérico do produto (ex: '01', '02')
   name: string;
   description: string;
   price: number;
@@ -43,6 +46,7 @@ export interface Product {
   tags: string[];
   category: 'tradicional' | 'fit';
   active: boolean;
+  operationalStatus?: 'ativo' | 'pausado' | 'descontinuado'; // Status operacional
   createdAt?: FirebaseTimestamp | Date;
 }
 
@@ -66,6 +70,7 @@ export interface BagItem {
 
 export interface Order {
   id: string;
+  orderNumber: number; // Número sequencial do pedido
   customerId?: string;
   customerName: string;
   customerEmail?: string;
@@ -73,11 +78,13 @@ export interface Order {
   customerAddress: string;
   customerAddressStructured?: Address;
   customerObs: string;
+  deliveryDate?: Date; // Data específica de entrega
   items: BagItem[];
   total: number;
   status: 'novo' | 'producao' | 'saiu' | 'entregue';
   paid: boolean;
   paidAt?: FirebaseTimestamp | Date;
+  paymentMethod?: 'pix' | 'dinheiro' | 'cartao' | 'permuta' | 'outro'; // Forma de pagamento
   createdAt: FirebaseTimestamp | Date;
   whatsappSent: boolean;
   couponCode?: string;
@@ -142,4 +149,44 @@ export interface Reminder {
   createdAt: FirebaseTimestamp | Date;
   isRead: boolean;
   isCompleted: boolean;
+}
+
+// =====================
+// FINANCEIRO
+// =====================
+
+export interface Receivable {
+  id: string;
+  orderId: string;
+  orderNumber: number;
+  customerId?: string;
+  customerName: string;
+  customerEmail?: string;
+  amount: number;
+  dueDate: Date;
+  paidAt?: Date;
+  status: 'pending' | 'paid' | 'overdue' | 'cancelled';
+  paymentMethod?: 'pix' | 'dinheiro' | 'cartao' | 'permuta' | 'outro';
+  description?: string;
+  createdAt: Date;
+}
+
+export interface Payable {
+  id: string;
+  description: string;
+  category: 'ingredientes' | 'embalagem' | 'fixo' | 'variavel' | 'servicos' | 'outros';
+  amount: number;
+  dueDate: Date;
+  paidAt?: Date;
+  status: 'pending' | 'paid' | 'overdue' | 'cancelled';
+  supplier?: string; // Fornecedor
+  notes?: string;
+  createdAt: Date;
+}
+
+export interface ExpenseCategory {
+  id: string;
+  name: string;
+  color?: string; // Cor para visualização
+  type: 'fixo' | 'variavel';
 }
