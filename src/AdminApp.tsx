@@ -190,6 +190,10 @@ export default function AdminApp() {
   });
   const [loadingDashboardStats, setLoadingDashboardStats] = useState(true);
 
+  // Financeiro
+  const [overdueReceivables, setOverdueReceivables] = useState<any[]>([]);
+  const [dueSoonReceivables, setDueSoonReceivables] = useState<any[]>([]);
+
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       setUser(firebaseUser);
@@ -240,19 +244,24 @@ export default function AdminApp() {
   useEffect(() => {
     loadReminders();
     loadOrders();
+    loadFinancialNotifications();
 
     const interval = setInterval(() => {
       loadReminders();
       loadOrders();
+      loadFinancialNotifications();
     }, 30000);
 
     return () => clearInterval(interval);
   }, []);
 
-  const notificationCount = newOrdersCount + reminders.filter(r => {
-    const reminderDate = toDate(r.reminderDate);
-    return !r.isCompleted && reminderDate <= new Date();
-  }).length;
+  const notificationCount = newOrdersCount +
+    reminders.filter(r => {
+      const reminderDate = toDate(r.reminderDate);
+      return !r.isCompleted && reminderDate <= new Date();
+    }).length +
+    overdueReceivables.length +
+    dueSoonReceivables.length;
 
   const handleNotificationClick = (type: 'order' | 'reminder', id: string) => {
     if (type === 'order') {
@@ -288,6 +297,34 @@ export default function AdminApp() {
       console.error('Erro ao carregar estatísticas:', error);
     } finally {
       setLoadingDashboardStats(false);
+    }
+  };
+
+  const loadFinancialNotifications = async () => {
+    try {
+      const { getReceivables } = await import('./services/FinanceService');
+      const receivables = await getReceivables();
+
+      const now = new Date();
+      const threeDaysFromNow = new Date();
+      threeDaysFromNow.setDate(threeDaysFromNow.getDate() + 3);
+
+      // Contas vencidas
+      const overdue = receivables.filter(r => {
+        const dueDate = new Date(r.dueDate);
+        return r.status === 'pending' && dueDate < now;
+      });
+
+      // Contas que vencem em 3 dias
+      const dueSoon = receivables.filter(r => {
+        const dueDate = new Date(r.dueDate);
+        return r.status === 'pending' && dueDate >= now && dueDate <= threeDaysFromNow;
+      });
+
+      setOverdueReceivables(overdue);
+      setDueSoonReceivables(dueSoon);
+    } catch (error) {
+      console.error('Erro ao carregar notificações financeiras:', error);
     }
   };
 
@@ -831,6 +868,66 @@ export default function AdminApp() {
                           <div className="p-8 text-center text-gray-400">
                             <Bell size={32} className="mx-auto mb-2 opacity-50" />
                             <p className="text-sm">Nenhuma notificação</p>
+                          </div>
+                        )}
+
+                        {/* Contas Vencidas */}
+                        {overdueReceivables.length > 0 && (
+                          <div className="p-3 border-t border-gray-100 bg-red-50">
+                            <p className="text-xs font-medium text-red-700 uppercase mb-2 flex items-center gap-1">
+                              <AlertCircle size={12} />
+                              Contas Vencidas ({overdueReceivables.length})
+                            </p>
+                            {overdueReceivables.slice(0, 3).map(rec => (
+                              <div
+                                key={rec.id}
+                                className="w-full p-2 hover:bg-red-100 rounded-lg flex items-center gap-3 cursor-pointer"
+                                onClick={() => {
+                                  setActiveTab('finance');
+                                  setShowNotifications(false);
+                                }}
+                              >
+                                <div className="w-8 h-8 rounded-full bg-red-100 text-red-600 flex items-center justify-center">
+                                  <DollarSign size={16} />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-sm font-medium text-red-800 truncate">{rec.customerName}</p>
+                                  <p className="text-xs text-red-600">
+                                    Vencido em {new Date(rec.dueDate).toLocaleDateString('pt-BR')} • R$ {rec.amount.toFixed(2)}
+                                  </p>
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+
+                        {/* Contas para Vencer */}
+                        {dueSoonReceivables.length > 0 && (
+                          <div className="p-3 border-t border-gray-100 bg-amber-50">
+                            <p className="text-xs font-medium text-amber-700 uppercase mb-2 flex items-center gap-1">
+                              <AlertCircle size={12} />
+                              Para Vencer ({dueSoonReceivables.length})
+                            </p>
+                            {dueSoonReceivables.slice(0, 3).map(rec => (
+                              <div
+                                key={rec.id}
+                                className="w-full p-2 hover:bg-amber-100 rounded-lg flex items-center gap-3 cursor-pointer"
+                                onClick={() => {
+                                  setActiveTab('finance');
+                                  setShowNotifications(false);
+                                }}
+                              >
+                                <div className="w-8 h-8 rounded-full bg-amber-100 text-amber-600 flex items-center justify-center">
+                                  <DollarSign size={16} />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <p className="text-sm font-medium text-amber-800 truncate">{rec.customerName}</p>
+                                  <p className="text-xs text-amber-600">
+                                    Vence em {new Date(rec.dueDate).toLocaleDateString('pt-BR')} • R$ {rec.amount.toFixed(2)}
+                                  </p>
+                                </div>
+                              </div>
+                            ))}
                           </div>
                         )}
                       </div>
