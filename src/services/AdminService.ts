@@ -9,20 +9,33 @@ export interface Admin {
   isAdmin: boolean;
 }
 
-const ADMIN_EMAILS = ['jmszveeh@gmail.com', 'natcp93@gmail.com'];
+// Emails cadastrados como fallback inicial - serão removidos após migração
+const LEGACY_ADMIN_EMAILS = ['jmszveeh@gmail.com', 'natcp93@gmail.com'];
 
 export async function checkIsAdmin(): Promise<boolean> {
   if (!auth.currentUser) return false;
-  
-  // Verificação por e-mail (para facilitar adição de novos admins sem UID)
-  if (auth.currentUser.email && ADMIN_EMAILS.includes(auth.currentUser.email.toLowerCase())) {
+
+  // Verificação primária: coleção 'admins' no Firestore
+  const ref = doc(db, 'admins', auth.currentUser.uid);
+  const snap = await getDoc(ref);
+
+  if (snap.exists()) {
     return true;
   }
 
-  // Fallback para a coleção 'admins' no Firestore (baseado em UID)
-  const ref = doc(db, 'admins', auth.currentUser.uid);
-  const snap = await getDoc(ref);
-  return snap.exists();
+  // Fallback temporário: verificação por e-mail (legado)
+  // Remove após confirmar que todos admins estão no Firestore
+  if (auth.currentUser.email && LEGACY_ADMIN_EMAILS.includes(auth.currentUser.email.toLowerCase())) {
+    // Migração automática: registra admin no Firestore
+    await setDoc(ref, {
+      email: auth.currentUser.email.toLowerCase(),
+      addedAt: new Date(),
+      isAdmin: true,
+    });
+    return true;
+  }
+
+  return false;
 }
 
 export async function getAllAdmins(): Promise<Admin[]> {
@@ -68,30 +81,7 @@ export async function getAdminCount(): Promise<number> {
   }
 }
 
-export async function findUserByEmail(email: string): Promise<{ uid: string; email: string } | null> {
-  try {
-    // Firebase Admin SDK seria ideal, mas vamos usar uma abordagem alternativa
-    // O cliente não pode buscar usuários por email diretamente
-    // Vamos armazenar um mapeamento em uma coleção separada
-    const ref = collection(db, 'admin_users');
-    const q = query(ref, where('email', '==', email.toLowerCase().trim()));
-    const snapshot = await getDocs(q);
-
-    if (snapshot.empty) {
-      return null;
-    }
-
-    const doc = snapshot.docs[0];
-    return {
-      uid: doc.id,
-      email: doc.data().email,
-    };
-  } catch (error) {
-    console.error('Erro ao buscar usuário:', error);
-    return null;
-  }
-}
-
+// Mapeamento email -> UID (opcional, para admin management)
 export async function createUserMapping(email: string, uid: string): Promise<void> {
   const ref = doc(db, 'admin_users', uid);
   await setDoc(ref, {

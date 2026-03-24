@@ -60,7 +60,7 @@ import { getAllCustomers, getLoyaltyStats, getRescueThresholds, enrichCustomerWi
 import { getPromotions, createPromotion, updatePromotion, deletePromotion } from './services/PromotionService';
 import { getOrders, updateOrderStatus, getOrderStats, markOrderAsPaid } from './services/OrderService';
 import { getRatings, deleteRating } from './services/RatingService';
-import { checkIsAdmin, addAdmin, removeAdmin, getAllAdmins, getAdminCount, findUserByEmail, createUserMapping, type Admin } from './services/AdminService';
+import { checkIsAdmin, addAdmin, removeAdmin, getAllAdmins, getAdminCount, createUserMapping, type Admin } from './services/AdminService';
 import { getReminders, createReminder, deleteReminder, markReminderAsCompleted, markAllRemindersAsRead } from './services/ReminderService';
 import { getReportStats, getSalesByDateRange, getTopProducts, getMonthlyRevenue, getDateRange, exportToCSV, type SalesData, type ProductSales, type ReportStats } from './services/ReportService';
 import { uploadProductImage, validateImageFile, formatFileSize, type UploadProgress } from './services/ImageUploadService';
@@ -4038,29 +4038,33 @@ function SettingsContent({ user }: { user: FirebaseUser }) {
 
     setSaving(true);
     try {
-      // Tenta encontrar usuário pelo email na coleção de mapeamento
-      const userFound = await findUserByEmail(newAdminEmail);
+      // Busca todos os admins e verifica se email já existe
+      const allAdmins = await getAllAdmins();
+      const existingAdmin = allAdmins.find(a => a.email.toLowerCase() === newAdminEmail.toLowerCase());
 
-      if (userFound) {
-        // Usuário encontrado, adiciona como admin
-        await addAdmin(userFound.uid, userFound.email);
-        await createUserMapping(userFound.email, userFound.uid);
-        setSuccess('Administrador adicionado com sucesso!');
-        setNewAdminEmail('');
-        setShowAddModal(false);
-        await loadAdmins();
-      } else {
-        // Usuário não encontrado no mapeamento
-        // Orienta usuário a convidar a pessoa para se cadastrar primeiro
-        setError(
-          'Usuário não encontrado. A pessoa precisa:\n' +
-          '1. Fazer login no site pela primeira vez\n' +
-          '2. Após o login, volte aqui e adicione como admin'
-        );
+      if (existingAdmin) {
+        setError('Este email já é administrador.');
+        setSaving(false);
+        return;
       }
+
+      // Nota: Para adicionar um novo admin, a pessoa precisa:
+      // 1. Fazer login no site pela primeira vez
+      // 2. O sistema automaticamente cria o mapeamento via checkIsAdmin
+      // 3. Volta aqui e adiciona como admin
+      setError(
+        'Para adicionar um novo administrador:\n\n' +
+        '1. A pessoa deve fazer login no site primeiro\n' +
+        '2. Após o login, o sistema registra automaticamente\n' +
+        '3. Volte aqui em Configurações > Administradores\n' +
+        '4. Adicione o email como administrador\n\n' +
+        'OU\n\n' +
+        'Use o Console do Firebase para encontrar o UID do usuário ' +
+        'e adicione manualmente na coleção "admins"'
+      );
     } catch (err) {
-      console.error('Erro ao adicionar admin:', err);
-      setError('Erro ao adicionar administrador. Tente novamente.');
+      console.error('Erro ao verificar admin:', err);
+      setError('Erro ao verificar administrador. Tente novamente.');
     } finally {
       setSaving(false);
     }
