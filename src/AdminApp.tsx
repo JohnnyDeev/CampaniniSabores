@@ -165,6 +165,7 @@ export default function AdminApp() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loadingOrders, setLoadingOrders] = useState(true);
   const [newOrdersCount, setNewOrdersCount] = useState(0);
+  const [showManualOrderModal, setShowManualOrderModal] = useState(false);
 
   const [reminders, setReminders] = useState<Reminder[]>([]);
   const [loadingReminders, setLoadingReminders] = useState(true);
@@ -272,7 +273,20 @@ export default function AdminApp() {
       return !r.isCompleted && reminderDate <= new Date();
     }).length +
     overdueReceivables.length +
-    dueSoonReceivables.length;
+    dueSoonReceivables.length +
+    orders.filter(o => {
+      // Pedidos com entrega marcada para hoje (na manhã do dia da entrega)
+      if (!o.deliveryDate || o.status === 'entregue') return false;
+      const deliveryDate = o.deliveryDate instanceof Date ? o.deliveryDate : toDate(o.deliveryDate);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const deliveryDay = new Date(deliveryDate);
+      deliveryDay.setHours(0, 0, 0, 0);
+      // Notifica na manhã do dia da entrega (antes das 12h)
+      const isToday = deliveryDay.getTime() === today.getTime();
+      const isMorning = new Date().getHours() < 12;
+      return isToday && isMorning;
+    }).length;
 
   const handleNotificationClick = (type: 'order' | 'reminder', id: string) => {
     if (type === 'order') {
@@ -585,6 +599,72 @@ export default function AdminApp() {
       const points = Math.floor(order.total);
       await markOrderAsPaid(order.id, order.customerId, points, order.total);
       setOrders(prev => prev.map(o => o.id === order.id ? { ...o, paid: true, loyaltyPointsEarned: points } : o));
+    }
+  };
+
+  const handleSaveManualOrder = async (orderData: {
+    customerName: string;
+    customerPhone: string;
+    customerAddress: string;
+    customerObs: string;
+    items: { productId: string; quantity: number }[];
+    total: number;
+    paymentMethod: 'pix' | 'dinheiro' | 'cartao' | 'permuta' | 'outro';
+    deliveryDate?: string;
+  }) => {
+    try {
+      // Gerar número sequencial do pedido
+      const ordersRef = collection(db, 'orders');
+      const q = query(ordersRef, orderBy('orderNumber', 'desc'));
+      const snapshot = await getDocs(q);
+      const lastOrderNumber = snapshot.empty ? 0 : (snapshot.docs[0].data().orderNumber || 0);
+      const newOrderNumber = lastOrderNumber + 1;
+
+      const newOrder = {
+        orderNumber: newOrderNumber,
+        customerId: undefined,
+        customerName: orderData.customerName,
+        customerEmail: '',
+        customerPhone: orderData.customerPhone,
+        customerAddress: orderData.customerAddress,
+        customerAddressStructured: undefined,
+        customerObs: orderData.customerObs || '',
+        deliveryDate: orderData.deliveryDate ? new Date(orderData.deliveryDate) : null,
+        items: orderData.items,
+        total: orderData.total,
+        subtotal: orderData.total,
+        status: 'novo' as Order['status'],
+        paid: false,
+        paidAt: undefined,
+        paymentMethod: orderData.paymentMethod,
+        createdAt: serverTimestamp(),
+        whatsappSent: false,
+        couponCode: undefined,
+        couponDiscount: undefined,
+        loyaltyPointsEarned: undefined,
+        source: 'manual',
+      };
+
+      await addDoc(ordersRef, newOrder);
+      await loadOrders();
+      setShowManualOrderModal(false);
+      alert('Pedido registrado com sucesso!');
+    } catch (error) {
+      console.error('Erro ao salvar pedido manual:', error);
+      alert('Erro ao registrar pedido. Tente novamente.');
+    }
+  };
+
+  const handleUpdateDeliveryDate = async (orderId: string, deliveryDate: string) => {
+    try {
+      const orderRef = doc(db, 'orders', orderId);
+      await updateDoc(orderRef, {
+        deliveryDate: new Date(deliveryDate),
+      });
+      setOrders(prev => prev.map(o => o.id === orderId ? { ...o, deliveryDate: new Date(deliveryDate) } : o));
+    } catch (error) {
+      console.error('Erro ao atualizar data de entrega:', error);
+      alert('Erro ao atualizar data de entrega. Tente novamente.');
     }
   };
 
@@ -924,6 +1004,66 @@ export default function AdminApp() {
                             </div>
                           )}
 
+                        {/* Entregas do Dia */}
+                        {orders.filter(o => {
+                          if (!o.deliveryDate || o.status === 'entregue') return false;
+                          const deliveryDate = o.deliveryDate instanceof Date ? o.deliveryDate : toDate(o.deliveryDate);
+                          const today = new Date();
+                          today.setHours(0, 0, 0, 0);
+                          const deliveryDay = new Date(deliveryDate);
+                          deliveryDay.setHours(0, 0, 0, 0);
+                          const isToday = deliveryDay.getTime() === today.getTime();
+                          const isMorning = new Date().getHours() < 12;
+                          return isToday && isMorning;
+                        }).length > 0 && (
+                            <div className="p-3 border-t border-gray-100 bg-[#FFF7F2]">
+                              <p className="text-xs font-medium text-[#FF5C00] uppercase mb-2 flex items-center gap-1">
+                                <Truck size={12} />
+                                Entregas do Dia ({orders.filter(o => {
+                                  if (!o.deliveryDate || o.status === 'entregue') return false;
+                                  const deliveryDate = o.deliveryDate instanceof Date ? o.deliveryDate : toDate(o.deliveryDate);
+                                  const today = new Date();
+                                  today.setHours(0, 0, 0, 0);
+                                  const deliveryDay = new Date(deliveryDate);
+                                  deliveryDay.setHours(0, 0, 0, 0);
+                                  const isToday = deliveryDay.getTime() === today.getTime();
+                                  const isMorning = new Date().getHours() < 12;
+                                  return isToday && isMorning;
+                                }).length})
+                              </p>
+                              {orders.filter(o => {
+                                if (!o.deliveryDate || o.status === 'entregue') return false;
+                                const deliveryDate = o.deliveryDate instanceof Date ? o.deliveryDate : toDate(o.deliveryDate);
+                                const today = new Date();
+                                today.setHours(0, 0, 0, 0);
+                                const deliveryDay = new Date(deliveryDate);
+                                deliveryDay.setHours(0, 0, 0, 0);
+                                const isToday = deliveryDay.getTime() === today.getTime();
+                                const isMorning = new Date().getHours() < 12;
+                                return isToday && isMorning;
+                              }).slice(0, 5).map(order => (
+                                <button
+                                  key={order.id}
+                                  onClick={() => handleNotificationClick('order', order.id)}
+                                  className="w-full text-left p-2 hover:bg-orange-50 rounded-lg flex items-center gap-3"
+                                >
+                                  <div className="w-8 h-8 rounded-full bg-[#FF5C00]/10 text-[#FF5C00] flex items-center justify-center">
+                                    <Truck size={16} />
+                                  </div>
+                                  <div className="flex-1 min-w-0">
+                                    <p className="text-sm font-medium text-gray-800 truncate">{order.customerName}</p>
+                                    <p className="text-xs text-gray-500">
+                                      {order.deliveryDate instanceof Date
+                                        ? order.deliveryDate.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+                                        : toDate(order.deliveryDate).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+                                      } • R$ {order.total.toFixed(2)}
+                                    </p>
+                                  </div>
+                                </button>
+                              ))}
+                            </div>
+                          )}
+
                         {notificationCount === 0 && (
                           <div className="p-8 text-center text-gray-400">
                             <Bell size={32} className="mx-auto mb-2 opacity-50" />
@@ -1029,6 +1169,7 @@ export default function AdminApp() {
               onStatusChange={handleOrderStatusChange}
               onTogglePaid={handleTogglePaid}
               highlightId={highlightOrderId}
+              onAddManualOrder={() => setShowManualOrderModal(true)}
             />
           )}
 
@@ -1200,6 +1341,13 @@ export default function AdminApp() {
               setShowBannerModal(false);
               setEditingBanner(null);
             }}
+          />
+        )}
+        {showManualOrderModal && (
+          <ManualOrderModal
+            products={products}
+            onSave={handleSaveManualOrder}
+            onClose={() => setShowManualOrderModal(false)}
           />
         )}
       </AnimatePresence>
@@ -1383,13 +1531,14 @@ function DashboardContent({ totalRevenue, totalOrders, avgRating, newOrders, loa
   );
 }
 
-function OrdersContent({ orders, loadingOrders, products, onStatusChange, onTogglePaid, highlightId }: {
+function OrdersContent({ orders, loadingOrders, products, onStatusChange, onTogglePaid, highlightId, onAddManualOrder }: {
   orders: Order[];
   loadingOrders: boolean;
   products: Product[];
   onStatusChange: (orderId: string, status: Order['status']) => Promise<void>;
   onTogglePaid: (order: Order) => Promise<void>;
   highlightId?: string | null;
+  onAddManualOrder: () => void;
 }) {
   const [filter, setFilter] = useState('all');
   const [dateFilter, setDateFilter] = useState('today');
@@ -1491,6 +1640,13 @@ function OrdersContent({ orders, loadingOrders, products, onStatusChange, onTogg
             <span>{sortedOrders.length} pedidos</span>
           </div>
           <div className="flex items-center gap-2">
+            <button
+              onClick={onAddManualOrder}
+              className="px-4 py-2 bg-[#FF5C00] text-white rounded-lg font-medium hover:bg-[#E65100] transition-colors flex items-center gap-2 text-sm"
+            >
+              <Plus size={18} />
+              Adicionar Pedido Manual
+            </button>
             <select
               value={dateFilter}
               onChange={(e) => setDateFilter(e.target.value)}
@@ -1548,6 +1704,17 @@ function OrdersContent({ orders, loadingOrders, products, onStatusChange, onTogg
                 <div className="col-span-1 flex flex-col">
                   <span className="font-mono text-xs bg-gray-100 px-2 py-1 rounded">{order.id.slice(0, 6).toUpperCase()}</span>
                   {order.whatsappSent && <MessageCircle size={14} className="text-green-600 ml-1" />}
+                  {order.deliveryDate && order.status !== 'entregue' && (
+                    <div className="flex items-center gap-1 text-[#FF5C00] mt-1">
+                      <Calendar size={12} />
+                      <span className="text-xs">
+                        {order.deliveryDate instanceof Date
+                          ? order.deliveryDate.toLocaleDateString('pt-BR', { day: '2digit', month: '2-digit' })
+                          : toDate(order.deliveryDate).toLocaleDateString('pt-BR', { day: '2digit', month: '2-digit' })
+                        }
+                      </span>
+                    </div>
+                  )}
                   <div className="text-xs text-gray-400 mt-1">{formatDateTime(order.createdAt)}</div>
                 </div>
 
@@ -1627,6 +1794,7 @@ function OrdersContent({ orders, loadingOrders, products, onStatusChange, onTogg
             onCopy={() => handleCopyOrder(selectedOrder)}
             products={products}
             onStatusChange={onStatusChange}
+            onUpdateDeliveryDate={handleUpdateDeliveryDate}
           />
         )}
       </AnimatePresence>
@@ -1643,6 +1811,7 @@ function OrderDetailsModal({
   onCopy,
   products,
   onStatusChange,
+  onUpdateDeliveryDate,
 }: {
   order: Order;
   notes: string;
@@ -1652,15 +1821,31 @@ function OrderDetailsModal({
   onCopy: () => void;
   products: Product[];
   onStatusChange: (orderId: string, status: Order['status']) => Promise<void>;
+  onUpdateDeliveryDate: (orderId: string, deliveryDate: string) => Promise<void>;
 }) {
   const [status, setStatus] = useState(order.status);
   const [showStatusDropdown, setShowStatusDropdown] = useState(false);
   const [selectedNextStatus, setSelectedNextStatus] = useState<string | null>(null);
   const [isPaid, setIsPaid] = useState(order.paid);
+  const [deliveryDate, setDeliveryDate] = useState(
+    order.deliveryDate
+      ? new Date(order.deliveryDate).toISOString().slice(0, 16)
+      : ''
+  );
+  const [savingDeliveryDate, setSavingDeliveryDate] = useState(false);
 
   const handleTogglePaid = async () => {
     setIsPaid(!isPaid);
     await onTogglePaid();
+  };
+
+  const handleDeliveryDateChange = async (value: string) => {
+    setDeliveryDate(value);
+    if (value) {
+      setSavingDeliveryDate(true);
+      await onUpdateDeliveryDate(order.id, value);
+      setSavingDeliveryDate(false);
+    }
   };
 
   const statusFlow: Record<string, string[]> = {
@@ -1775,6 +1960,45 @@ function OrderDetailsModal({
             >
               {isPaid ? '✅ Recebido' : 'Marcar como Pago'}
             </button>
+          </div>
+
+          {/* Delivery Date */}
+          <div>
+            <h4 className="font-semibold text-gray-800 mb-3">Data de Entrega</h4>
+            <div className="p-4 bg-gray-50 rounded-2xl">
+              <input
+                type="datetime-local"
+                value={deliveryDate}
+                onChange={(e) => handleDeliveryDateChange(e.target.value)}
+                className="w-full p-3 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#FF5C00]/20 focus:border-[#FF5C00] outline-none"
+              />
+              {deliveryDate && (
+                <div className="mt-3 flex items-center gap-2 text-sm">
+                  <Clock size={16} className="text-[#FF5C00]" />
+                  <span className="text-gray-600">
+                    Entrega programada para:{' '}
+                    <span className="font-medium text-gray-800">
+                      {new Date(deliveryDate).toLocaleString('pt-BR', {
+                        day: '2-digit',
+                        month: '2-digit',
+                        year: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                      })}
+                    </span>
+                  </span>
+                </div>
+              )}
+              {savingDeliveryDate && (
+                <div className="mt-2 flex items-center gap-2 text-xs text-[#FF5C00]">
+                  <Loader2 size={14} className="animate-spin" />
+                  Salvando...
+                </div>
+              )}
+            </div>
+            <p className="text-xs text-gray-400 mt-1">
+              📌 A notificação aparecerá no sininho na manhã do dia da entrega
+            </p>
           </div>
 
           {/* Status */}
@@ -5936,6 +6160,297 @@ function BannerModal({
             >
               <Check size={24} />
               {banner ? 'Salvar Alterações' : 'Criar Banner'}
+            </button>
+          </div>
+        </form>
+      </motion.div>
+    </div>
+  );
+}
+
+function ManualOrderModal({
+  products,
+  onSave,
+  onClose,
+}: {
+  products: Product[];
+  onSave: (data: {
+    customerName: string;
+    customerPhone: string;
+    customerAddress: string;
+    customerObs: string;
+    items: { productId: string; quantity: number }[];
+    total: number;
+    paymentMethod: 'pix' | 'dinheiro' | 'cartao' | 'permuta' | 'outro';
+    deliveryDate?: string;
+  }) => void;
+  onClose: () => void;
+}) {
+  const [customerName, setCustomerName] = useState('');
+  const [customerPhone, setCustomerPhone] = useState('');
+  const [customerAddress, setCustomerAddress] = useState('');
+  const [customerObs, setCustomerObs] = useState('');
+  const [deliveryDate, setDeliveryDate] = useState('');
+  const [paymentMethod, setPaymentMethod] = useState<'pix' | 'dinheiro' | 'cartao' | 'permuta' | 'outro'>('pix');
+  const [orderItems, setOrderItems] = useState<{ productId: string; quantity: number }[]>([]);
+  const [selectedProduct, setSelectedProduct] = useState('');
+  const [quantity, setQuantity] = useState(1);
+
+  const formatCurrency = (value: number) =>
+    new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(value);
+
+  const getProductName = (productId: string) =>
+    products.find(p => p.id === productId)?.name || 'Produto';
+
+  const getProductPrice = (productId: string) =>
+    products.find(p => p.id === productId)?.price || 0;
+
+  const handleAddItem = () => {
+    if (!selectedProduct || quantity <= 0) return;
+
+    const existingItemIndex = orderItems.findIndex(item => item.productId === selectedProduct);
+    if (existingItemIndex >= 0) {
+      const newItems = [...orderItems];
+      newItems[existingItemIndex].quantity += quantity;
+      setOrderItems(newItems);
+    } else {
+      setOrderItems([...orderItems, { productId: selectedProduct, quantity }]);
+    }
+    setSelectedProduct('');
+    setQuantity(1);
+  };
+
+  const handleRemoveItem = (index: number) => {
+    setOrderItems(orderItems.filter((_, i) => i !== index));
+  };
+
+  const calculateTotal = () => {
+    return orderItems.reduce((total, item) => {
+      return total + (getProductPrice(item.productId) * item.quantity);
+    }, 0);
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+
+    if (!customerName.trim() || !customerPhone.trim() || !customerAddress.trim()) {
+      alert('Preencha todos os campos obrigatórios.');
+      return;
+    }
+
+    if (orderItems.length === 0) {
+      alert('Adicione pelo menos um item ao pedido.');
+      return;
+    }
+
+    onSave({
+      customerName: customerName.trim(),
+      customerPhone: customerPhone.trim(),
+      customerAddress: customerAddress.trim(),
+      customerObs: customerObs.trim(),
+      items: orderItems,
+      total: calculateTotal(),
+      paymentMethod,
+      deliveryDate: deliveryDate || undefined,
+    });
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+      <motion.div
+        initial={{ opacity: 0, scale: 0.9, y: 20 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.9, y: 20 }}
+        className="bg-white rounded-3xl p-8 w-full max-w-2xl shadow-2xl max-h-[90vh] overflow-y-auto"
+      >
+        <div className="flex items-center justify-between mb-6">
+          <h3 className="text-xl font-bold text-gray-800">Novo Pedido Manual</h3>
+          <button
+            onClick={onClose}
+            className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+          >
+            <X size={20} />
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="space-y-5">
+          {/* Dados do Cliente */}
+          <div className="space-y-4">
+            <h4 className="font-semibold text-gray-700 flex items-center gap-2">
+              <User size={18} />
+              Dados do Cliente
+            </h4>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Nome do Cliente *</label>
+              <input
+                type="text"
+                value={customerName}
+                onChange={(e) => setCustomerName(e.target.value)}
+                placeholder="Ex: Maria Silva"
+                className="w-full border border-gray-200 rounded-xl p-3 focus:ring-2 focus:ring-[#FF5C00]/30 focus:border-[#FF5C00] outline-none"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Telefone/WhatsApp *</label>
+              <input
+                type="tel"
+                value={customerPhone}
+                onChange={(e) => setCustomerPhone(e.target.value)}
+                placeholder="Ex: (11) 99999-9999"
+                className="w-full border border-gray-200 rounded-xl p-3 focus:ring-2 focus:ring-[#FF5C00]/30 focus:border-[#FF5C00] outline-none"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Endereço de Entrega *</label>
+              <textarea
+                value={customerAddress}
+                onChange={(e) => setCustomerAddress(e.target.value)}
+                placeholder="Ex: Rua das Flores, 123 - Centro"
+                className="w-full border border-gray-200 rounded-xl p-3 focus:ring-2 focus:ring-[#FF5C00]/30 focus:border-[#FF5C00] outline-none resize-none"
+                rows={2}
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">Observações</label>
+              <textarea
+                value={customerObs}
+                onChange={(e) => setCustomerObs(e.target.value)}
+                placeholder="Ex: Sem cebola, entregar na portaria..."
+                className="w-full border border-gray-200 rounded-xl p-3 focus:ring-2 focus:ring-[#FF5C00]/30 focus:border-[#FF5C00] outline-none resize-none"
+                rows={2}
+              />
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Data de Entrega</label>
+                <input
+                  type="datetime-local"
+                  value={deliveryDate}
+                  onChange={(e) => setDeliveryDate(e.target.value)}
+                  className="w-full border border-gray-200 rounded-xl p-3 focus:ring-2 focus:ring-[#FF5C00]/30 focus:border-[#FF5C00] outline-none"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Forma de Pagamento *</label>
+                <select
+                  value={paymentMethod}
+                  onChange={(e) => setPaymentMethod(e.target.value as any)}
+                  className="w-full border border-gray-200 rounded-xl p-3 focus:ring-2 focus:ring-[#FF5C00]/30 focus:border-[#FF5C00] outline-none bg-white"
+                >
+                  <option value="pix">PIX</option>
+                  <option value="dinheiro">Dinheiro</option>
+                  <option value="cartao">Cartão</option>
+                  <option value="permuta">Permuta</option>
+                  <option value="outro">Outro</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          {/* Itens do Pedido */}
+          <div className="space-y-4 pt-4 border-t border-gray-100">
+            <h4 className="font-semibold text-gray-700 flex items-center gap-2">
+              <ShoppingBag size={18} />
+              Itens do Pedido
+            </h4>
+
+            <div className="flex gap-2 items-end">
+              <div className="flex-1">
+                <label className="block text-sm font-medium text-gray-700 mb-2">Produto</label>
+                <select
+                  value={selectedProduct}
+                  onChange={(e) => setSelectedProduct(e.target.value)}
+                  className="w-full border border-gray-200 rounded-xl p-3 focus:ring-2 focus:ring-[#FF5C00]/30 focus:border-[#FF5C00] outline-none bg-white"
+                >
+                  <option value="">Selecione um produto</option>
+                  {products.filter(p => p.active).map(product => (
+                    <option key={product.id} value={product.id}>
+                      {product.name} - {formatCurrency(product.price)}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="w-24">
+                <label className="block text-sm font-medium text-gray-700 mb-2">Qtd</label>
+                <input
+                  type="number"
+                  min="1"
+                  value={quantity}
+                  onChange={(e) => setQuantity(parseInt(e.target.value) || 1)}
+                  className="w-full border border-gray-200 rounded-xl p-3 focus:ring-2 focus:ring-[#FF5C00]/30 focus:border-[#FF5C00] outline-none"
+                />
+              </div>
+
+              <button
+                type="button"
+                onClick={handleAddItem}
+                disabled={!selectedProduct}
+                className="px-4 py-3 bg-[#FF5C00] text-white rounded-xl font-medium hover:bg-[#E65100] disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+              >
+                <Plus size={18} />
+                Adicionar
+              </button>
+            </div>
+
+            {/* Lista de Itens */}
+            {orderItems.length > 0 && (
+              <div className="border border-gray-200 rounded-xl overflow-hidden">
+                <div className="bg-gray-50 px-4 py-2 text-xs font-semibold text-gray-500 uppercase tracking-wider grid grid-cols-12 gap-4">
+                  <div className="col-span-6">Produto</div>
+                  <div className="col-span-2 text-center">Qtd</div>
+                  <div className="col-span-2 text-right">Preço</div>
+                  <div className="col-span-2 text-center">Ações</div>
+                </div>
+                <div className="divide-y divide-gray-100">
+                  {orderItems.map((item, index) => (
+                    <div key={index} className="px-4 py-3 grid grid-cols-12 gap-4 items-center text-sm">
+                      <div className="col-span-6 text-gray-800">{getProductName(item.productId)}</div>
+                      <div className="col-span-2 text-center text-gray-600">{item.quantity}</div>
+                      <div className="col-span-2 text-right font-medium text-[#FF5C00]">
+                        {formatCurrency(getProductPrice(item.productId) * item.quantity)}
+                      </div>
+                      <div className="col-span-2 flex justify-center">
+                        <button
+                          type="button"
+                          onClick={() => handleRemoveItem(index)}
+                          className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+                <div className="px-4 py-3 bg-gray-50 border-t border-gray-200 flex justify-between items-center">
+                  <span className="font-semibold text-gray-700">Total do Pedido:</span>
+                  <span className="text-xl font-bold text-[#FF5C00]">{formatCurrency(calculateTotal())}</span>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Ações */}
+          <div className="flex gap-3 pt-4">
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex-1 py-3 border border-gray-200 text-gray-600 rounded-xl font-medium hover:bg-gray-50 transition-colors"
+            >
+              Cancelar
+            </button>
+            <button
+              type="submit"
+              className="flex-1 py-3 bg-[#FF5C00] text-white rounded-xl font-medium hover:bg-[#E65100] transition-colors flex items-center justify-center gap-2"
+            >
+              <Check size={20} />
+              Registrar Pedido
             </button>
           </div>
         </form>
