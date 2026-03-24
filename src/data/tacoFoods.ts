@@ -84,7 +84,7 @@ export const tacoFoods: TacoFood[] = [
   { id: 62, name: 'Pimentão', kcal: 20, category: 'Legumes e Verduras' },
   { id: 63, name: 'Cogumelo', kcal: 22, category: 'Legumes e Verduras' },
 
-  // 🍅 Temperos e Vegetais Aromáticos (64-75)
+  // 🍅 Temperos e Vegetais Aromáticos (64-76)
   { id: 64, name: 'Tomate', kcal: 15, category: 'Temperos' },
   { id: 65, name: 'Cebola', kcal: 40, category: 'Temperos' },
   { id: 66, name: 'Alho', kcal: 149, category: 'Temperos' },
@@ -97,17 +97,18 @@ export const tacoFoods: TacoFood[] = [
   { id: 73, name: 'Gengibre', kcal: 80, category: 'Temperos' },
   { id: 74, name: 'Pimenta-do-reino', kcal: 251, category: 'Temperos' },
   { id: 75, name: 'Cominho', kcal: 375, category: 'Temperos' },
+  { id: 76, name: 'Limão', kcal: 32, category: 'Temperos' },
 
-  // 🧂 Outros (76-85)
-  { id: 76, name: 'Mel', kcal: 304, category: 'Outros' },
-  { id: 77, name: 'Ketchup', kcal: 101, category: 'Outros' },
-  { id: 78, name: 'Mostarda', kcal: 66, category: 'Outros' },
-  { id: 79, name: 'Maionese', kcal: 680, category: 'Outros' },
-  { id: 80, name: 'Molho inglês', kcal: 77, category: 'Outros' },
-  { id: 81, name: 'Castanha de caju', kcal: 553, category: 'Outros' },
-  { id: 82, name: 'Nozes', kcal: 654, category: 'Outros' },
-  { id: 83, name: 'Amendoim', kcal: 567, category: 'Outros' },
-  { id: 84, name: 'Passas', kcal: 299, category: 'Outros' },
+  // 🧂 Outros (77-86)
+  { id: 77, name: 'Mel', kcal: 304, category: 'Outros' },
+  { id: 78, name: 'Ketchup', kcal: 101, category: 'Outros' },
+  { id: 79, name: 'Mostarda', kcal: 66, category: 'Outros' },
+  { id: 80, name: 'Maionese', kcal: 680, category: 'Outros' },
+  { id: 81, name: 'Molho inglês', kcal: 77, category: 'Outros' },
+  { id: 82, name: 'Castanha de caju', kcal: 553, category: 'Outros' },
+  { id: 83, name: 'Nozes', kcal: 654, category: 'Outros' },
+  { id: 84, name: 'Amendoim', kcal: 567, category: 'Outros' },
+  { id: 85, name: 'Passas', kcal: 299, category: 'Outros' },
 ];
 
 // Função para buscar alimento por nome
