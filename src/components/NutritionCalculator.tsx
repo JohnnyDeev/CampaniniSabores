@@ -13,6 +13,7 @@ import {
   Utensils,
   Scale,
   RefreshCw,
+  Edit,
 } from 'lucide-react';
 import {
   tacoFoods,
@@ -24,10 +25,10 @@ import {
 import {
   calculateRecipe,
   calculateServingKcal,
-  calculateMultipleServings,
   saveNutritionRecipe,
   getNutritionRecipes,
   deleteNutritionRecipe,
+  updateNutritionRecipe,
   type RecipeIngredient,
   type NutritionRecipe,
 } from '../services/NutritionService';
@@ -40,7 +41,6 @@ export default function NutritionCalculator() {
     totalKcal: number;
     totalWeight_g: number;
     kcalPerServing: number;
-    multipleServings: Record<number, number>;
   } | null>(null);
   const [savedRecipes, setSavedRecipes] = useState<NutritionRecipe[]>([]);
   const [loadingRecipes, setLoadingRecipes] = useState(true);
@@ -49,6 +49,21 @@ export default function NutritionCalculator() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('Todos');
   const [showCategoryDropdown, setShowCategoryDropdown] = useState(false);
+
+  // Estados para edição
+  const [editingRecipeId, setEditingRecipeId] = useState<string | null>(null);
+
+  // Estados para combinar receitas
+  const [showCombiner, setShowCombiner] = useState(false);
+  const [selectedRecipe1, setSelectedRecipe1] = useState<NutritionRecipe | null>(null);
+  const [selectedRecipe2, setSelectedRecipe2] = useState<NutritionRecipe | null>(null);
+  const [combinedResult, setCombinedResult] = useState<{
+    totalKcal: number;
+    totalWeight_g: number;
+    kcalPerServing: number;
+    name: string;
+  } | null>(null);
+  const [combinedServingWeight, setCombinedServingWeight] = useState(25);
 
   const categories = ['Todos', ...getUniqueCategories()];
 
@@ -114,14 +129,28 @@ export default function NutritionCalculator() {
     if (recipeName.trim()) {
       setSaving(true);
       try {
-        await saveNutritionRecipe({
-          name: recipeName,
-          ingredients,
-          totalWeight_g,
-          totalKcal,
-          servingWeight_g: servingWeight,
-          kcalPerServing,
-        });
+        if (editingRecipeId) {
+          // Atualizar receita existente
+          await updateNutritionRecipe(editingRecipeId, {
+            name: recipeName,
+            ingredients,
+            totalWeight_g,
+            totalKcal,
+            servingWeight_g: servingWeight,
+            kcalPerServing,
+          });
+          setEditingRecipeId(null);
+        } else {
+          // Criar nova receita
+          await saveNutritionRecipe({
+            name: recipeName,
+            ingredients,
+            totalWeight_g,
+            totalKcal,
+            servingWeight_g: servingWeight,
+            kcalPerServing,
+          });
+        }
         await loadSavedRecipes();
       } catch (error) {
         console.error('Erro ao salvar receita:', error);
@@ -131,7 +160,7 @@ export default function NutritionCalculator() {
     }
   };
 
-  const handleLoadRecipe = (recipe: NutritionRecipe) => {
+  const handleEditRecipe = (recipe: NutritionRecipe) => {
     setRecipeName(recipe.name);
     setIngredients(recipe.ingredients);
     setServingWeight(recipe.servingWeight_g);
@@ -139,12 +168,65 @@ export default function NutritionCalculator() {
       totalKcal: recipe.totalKcal,
       totalWeight_g: recipe.totalWeight_g,
       kcalPerServing: recipe.kcalPerServing,
-      multipleServings: calculateMultipleServings(
-        recipe.totalKcal,
-        recipe.totalWeight_g,
-        [25, 50, 100, 200]
-      ),
     });
+    setEditingRecipeId(recipe.id!);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  };
+
+  const handleCombineRecipes = () => {
+    if (!selectedRecipe1 || !selectedRecipe2) {
+      alert('Selecione duas receitas para combinar!');
+      return;
+    }
+
+    const totalKcal = selectedRecipe1.totalKcal + selectedRecipe2.totalKcal;
+    const totalWeight = selectedRecipe1.totalWeight_g + selectedRecipe2.totalWeight_g;
+    const kcalPerServing = calculateServingKcal(totalKcal, totalWeight, combinedServingWeight);
+
+    setCombinedResult({
+      totalKcal,
+      totalWeight_g: totalWeight,
+      kcalPerServing,
+      name: `${selectedRecipe1.name} + ${selectedRecipe2.name}`,
+    });
+  };
+
+  const handleSaveCombinedRecipe = async () => {
+    if (!combinedResult || !selectedRecipe1 || !selectedRecipe2) return;
+
+    setSaving(true);
+    try {
+      const newRecipeName = prompt('Nome para a receita combinada:', combinedResult.name);
+      if (!newRecipeName) {
+        setSaving(false);
+        return;
+      }
+
+      // Combinar ingredientes das duas receitas
+      const combinedIngredients = [...selectedRecipe1.ingredients, ...selectedRecipe2.ingredients];
+
+      await saveNutritionRecipe({
+        name: newRecipeName,
+        ingredients: combinedIngredients,
+        totalWeight_g: combinedResult.totalWeight_g,
+        totalKcal: combinedResult.totalKcal,
+        servingWeight_g: combinedServingWeight,
+        kcalPerServing: combinedResult.kcalPerServing,
+      });
+      await loadSavedRecipes();
+
+      // Limpar combinador
+      setShowCombiner(false);
+      setSelectedRecipe1(null);
+      setSelectedRecipe2(null);
+      setCombinedResult(null);
+      alert('Receita combinada salva com sucesso!');
+    } catch (error) {
+      console.error('Erro ao salvar receita combinada:', error);
+      alert('Erro ao salvar receita combinada.');
+    } finally {
+      setSaving(false);
+    }
   };
 
   const handleDeleteRecipe = async (recipeId: string) => {
@@ -180,14 +262,28 @@ export default function NutritionCalculator() {
     >
       {/* Header */}
       <div className="bg-white rounded-2xl p-6 shadow-sm mb-6">
-        <div className="flex items-center gap-3 mb-4">
-          <div className="w-12 h-12 bg-[#FF5C00]/10 rounded-xl flex items-center justify-center">
-            <Flame size={24} className="text-[#FF5C00]" />
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 bg-[#FF5C00]/10 rounded-xl flex items-center justify-center">
+              <Flame size={24} className="text-[#FF5C00]" />
+            </div>
+            <div>
+              <h2 className="text-xl font-bold text-gray-800">Calculadora de Calorias</h2>
+              <p className="text-sm text-gray-500">Calcule as calorias das suas receitas</p>
+            </div>
           </div>
-          <div>
-            <h2 className="text-xl font-bold text-gray-800">Calculadora de Calorias</h2>
-            <p className="text-sm text-gray-500">Calcule as calorias das suas receitas</p>
-          </div>
+          {editingRecipeId && (
+            <div className="flex items-center gap-2 px-3 py-1.5 bg-[#FF5C00]/10 text-[#FF5C00] rounded-lg text-sm font-medium">
+              <Edit size={16} />
+              Editando receita
+              <button
+                onClick={() => setEditingRecipeId(null)}
+                className="ml-2 text-[#FF5C00] hover:text-[#E65100]"
+              >
+                <X size={16} />
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Nome da Receita */}
@@ -353,10 +449,115 @@ export default function NutritionCalculator() {
 
       {/* Receitas Salvas */}
       <div className="bg-white rounded-2xl p-6 shadow-sm">
-        <h3 className="text-lg font-bold text-gray-800 mb-4 flex items-center gap-2">
-          <Utensils size={20} className="text-[#FF5C00]" />
-          Receitas Salvas
-        </h3>
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-lg font-bold text-gray-800 flex items-center gap-2">
+            <Utensils size={20} className="text-[#FF5C00]" />
+            Receitas Salvas
+          </h3>
+          <button
+            onClick={() => setShowCombiner(!showCombiner)}
+            className="text-sm font-medium text-[#FF5C00] hover:text-[#E65100] flex items-center gap-1"
+          >
+            🔗 Combinar Receitas
+          </button>
+        </div>
+
+        {/* Combinador de Receitas */}
+        {showCombiner && (
+          <div className="mb-6 p-4 bg-gradient-to-r from-[#FF5C00]/10 to-[#FF5C00]/5 rounded-2xl border border-[#FF5C00]/20">
+            <h4 className="font-semibold text-gray-800 mb-3 flex items-center gap-2">
+              <RefreshCw size={18} className="text-[#FF5C00]" />
+              Combinar Receitas
+            </h4>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Receita 1</label>
+                <select
+                  value={selectedRecipe1?.id || ''}
+                  onChange={(e) => {
+                    const recipe = savedRecipes.find(r => r.id === e.target.value);
+                    setSelectedRecipe1(recipe || null);
+                  }}
+                  className="w-full p-2 border border-gray-200 rounded-lg text-sm bg-white focus:ring-2 focus:ring-[#FF5C00]/30 focus:border-[#FF5C00] outline-none"
+                >
+                  <option value="">Selecione...</option>
+                  {savedRecipes.map(recipe => (
+                    <option key={recipe.id} value={recipe.id}>
+                      {recipe.name} ({recipe.totalKcal} kcal)
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1">Receita 2</label>
+                <select
+                  value={selectedRecipe2?.id || ''}
+                  onChange={(e) => {
+                    const recipe = savedRecipes.find(r => r.id === e.target.value);
+                    setSelectedRecipe2(recipe || null);
+                  }}
+                  className="w-full p-2 border border-gray-200 rounded-lg text-sm bg-white focus:ring-2 focus:ring-[#FF5C00]/30 focus:border-[#FF5C00] outline-none"
+                >
+                  <option value="">Selecione...</option>
+                  {savedRecipes.map(recipe => (
+                    <option key={recipe.id} value={recipe.id}>
+                      {recipe.name} ({recipe.totalKcal} kcal)
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+            <button
+              onClick={handleCombineRecipes}
+              className="w-full py-2 bg-[#FF5C00] text-white rounded-lg font-medium hover:bg-[#E65100] transition-colors flex items-center justify-center gap-2"
+            >
+              <RefreshCw size={18} />
+              Combinar
+            </button>
+
+            {/* Resultado Combinado */}
+            {combinedResult && (
+              <div className="mt-4 p-4 bg-white rounded-xl border border-[#FF5C00]/20">
+                <div className="text-center mb-3">
+                  <p className="text-sm text-gray-600 mb-1">{combinedResult.name}</p>
+                  <p className="text-3xl font-bold text-[#FF5C00]">{combinedResult.totalKcal} kcal</p>
+                  <p className="text-xs text-gray-500 mt-1">Peso total: {combinedResult.totalWeight_g}g</p>
+                </div>
+                <div className="flex items-center gap-3 mb-3">
+                  <Scale size={18} className="text-gray-400" />
+                  <input
+                    type="number"
+                    value={combinedServingWeight}
+                    onChange={(e) => {
+                      const newWeight = parseInt(e.target.value) || 0;
+                      setCombinedServingWeight(newWeight);
+                      const kcalPerServing = calculateServingKcal(
+                        combinedResult.totalKcal,
+                        combinedResult.totalWeight_g,
+                        newWeight
+                      );
+                      setCombinedResult({ ...combinedResult, kcalPerServing });
+                    }}
+                    className="w-24 border border-gray-200 rounded-lg p-2 text-center text-sm focus:ring-2 focus:ring-[#FF5C00]/30 focus:border-[#FF5C00] outline-none"
+                  />
+                  <span className="text-gray-500">g</span>
+                </div>
+                <div className="text-center p-3 bg-[#FF5C00]/10 rounded-lg">
+                  <p className="text-sm text-gray-600">Cada porção de {combinedServingWeight}g tem:</p>
+                  <p className="text-2xl font-bold text-[#FF5C00]">{combinedResult.kcalPerServing} kcal</p>
+                </div>
+                <button
+                  onClick={handleSaveCombinedRecipe}
+                  disabled={saving}
+                  className="w-full mt-3 py-2 border border-[#FF5C00] text-[#FF5C00] rounded-lg font-medium hover:bg-[#FF5C00]/10 transition-colors flex items-center justify-center gap-2 disabled:opacity-50"
+                >
+                  <Save size={18} />
+                  Salvar como nova receita
+                </button>
+              </div>
+            )}
+          </div>
+        )}
 
         {loadingRecipes ? (
           <div className="flex items-center justify-center py-8">
@@ -383,10 +584,17 @@ export default function NutritionCalculator() {
                 <div className="flex items-center gap-2">
                   <button
                     onClick={() => handleLoadRecipe(recipe)}
-                    className="p-2 text-[#FF5C00] hover:bg-[#FF5C00]/10 rounded-lg transition-colors"
+                    className="p-2 text-gray-600 hover:bg-gray-200 rounded-lg transition-colors"
                     title="Carregar receita"
                   >
                     <RefreshCw size={18} />
+                  </button>
+                  <button
+                    onClick={() => handleEditRecipe(recipe)}
+                    className="p-2 text-[#FF5C00] hover:bg-[#FF5C00]/10 rounded-lg transition-colors"
+                    title="Editar receita"
+                  >
+                    <Edit size={18} />
                   </button>
                   <button
                     onClick={() => handleDeleteRecipe(recipe.id!)}

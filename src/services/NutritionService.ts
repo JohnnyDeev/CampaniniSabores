@@ -86,6 +86,22 @@ export async function saveNutritionRecipe(recipe: Omit<NutritionRecipe, 'id'>): 
 }
 
 /**
+ * Atualiza uma receita existente
+ */
+export async function updateNutritionRecipe(
+  recipeId: string,
+  recipe: Partial<NutritionRecipe>
+): Promise<void> {
+  try {
+    const recipeRef = doc(db, 'nutrition_recipes', recipeId);
+    await updateDoc(recipeRef, recipe);
+  } catch (error) {
+    console.error('Erro ao atualizar receita:', error);
+    throw error;
+  }
+}
+
+/**
  * Busca todas as receitas salvas
  */
 export async function getNutritionRecipes(): Promise<NutritionRecipe[]> {
@@ -93,7 +109,7 @@ export async function getNutritionRecipes(): Promise<NutritionRecipe[]> {
     const recipesRef = collection(db, 'nutrition_recipes');
     const q = query(recipesRef, orderBy('createdAt', 'desc'));
     const snapshot = await getDocs(q);
-    
+
     return snapshot.docs.map(doc => ({
       id: doc.id,
       ...doc.data(),
@@ -112,22 +128,6 @@ export async function deleteNutritionRecipe(recipeId: string): Promise<void> {
     await deleteDoc(doc(db, 'nutrition_recipes', recipeId));
   } catch (error) {
     console.error('Erro ao excluir receita:', error);
-    throw error;
-  }
-}
-
-/**
- * Atualiza uma receita
- */
-export async function updateNutritionRecipe(
-  recipeId: string,
-  recipe: Partial<NutritionRecipe>
-): Promise<void> {
-  try {
-    const recipeRef = doc(db, 'nutrition_recipes', recipeId);
-    await updateDoc(recipeRef, recipe);
-  } catch (error) {
-    console.error('Erro ao atualizar receita:', error);
     throw error;
   }
 }
