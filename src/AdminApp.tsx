@@ -853,9 +853,9 @@ export default function AdminApp() {
       {/* Sidebar */}
       <motion.aside
         animate={{ width: sidebarOpen ? 280 : 80 }}
-        className="bg-gray-900 text-white flex flex-col fixed h-full z-20"
+        className="bg-gray-900 text-white flex flex-col fixed h-full z-20 overflow-hidden"
       >
-        <div className="p-6 border-b border-gray-800 flex items-center gap-4">
+        <div className="p-6 border-b border-gray-800 flex items-center gap-4 flex-shrink-0">
           <div className="w-12 h-12 bg-[#FF5C00] rounded-full flex items-center justify-center text-white font-bold text-2xl shadow-lg shadow-[#FF5C00]/20 flex-shrink-0">
             C
           </div>
@@ -867,7 +867,7 @@ export default function AdminApp() {
           )}
         </div>
 
-        <nav className="flex-1 py-6 px-4 space-y-1">
+        <nav className="flex-1 py-6 px-4 space-y-1 overflow-y-auto">
           {NAV_ITEMS.map(item => (
             <button
               key={item.id}
