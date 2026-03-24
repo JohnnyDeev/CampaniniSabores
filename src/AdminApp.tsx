@@ -50,6 +50,7 @@ import {
   Percent,
   PackageSearch,
   Save,
+  Flame,
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { db, collection, getDocs, addDoc, updateDoc, doc, serverTimestamp, query, orderBy, auth, googleProvider, signInWithPopup, signOut, onAuthStateChanged, storage, ref, uploadBytes, getDownloadURL, deleteDoc } from './firebase';
@@ -66,6 +67,7 @@ import { getReportStats, getSalesByDateRange, getTopProducts, getMonthlyRevenue,
 import { uploadProductImage, validateImageFile, formatFileSize, type UploadProgress } from './services/ImageUploadService';
 import { getBanners, addBanner, updateBanner, deleteBanner, toggleBannerStatus } from './services/BannerService';
 import ProductionManager from './components/ProductionManager';
+import NutritionCalculator from './components/NutritionCalculator';
 import type { Banner, Reminder } from './types';
 
 type FirebaseTimestamp = { toDate: () => Date };
@@ -117,6 +119,7 @@ const NAV_ITEMS = [
   { id: 'reminders', label: 'Lembretes', icon: Bell },
   { id: 'banners', label: 'Banners', icon: ImageIcon },
   { id: 'finance', label: 'Financeiro', icon: DollarSign },
+  { id: 'nutrition', label: 'Calculadora Nutricional', icon: Flame },
   { id: 'settings', label: 'Configurações', icon: Settings },
 ];
 
@@ -1273,6 +1276,11 @@ export default function AdminApp() {
           {/* Finance */}
           {activeTab === 'finance' && (
             <FinanceContent />
+          )}
+
+          {/* Nutrition Calculator */}
+          {activeTab === 'nutrition' && (
+            <NutritionCalculator />
           )}
 
           {/* Settings */}
