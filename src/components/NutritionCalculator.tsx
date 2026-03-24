@@ -103,16 +103,15 @@ export default function NutritionCalculator() {
 
     const { totalKcal, totalWeight_g } = calculateRecipe(ingredients);
     const kcalPerServing = calculateServingKcal(totalKcal, totalWeight_g, servingWeight);
-    const multipleServings = calculateMultipleServings(totalKcal, totalWeight_g, [25, 50, 100, 200]);
 
     setResult({
       totalKcal,
       totalWeight_g,
       kcalPerServing,
-      multipleServings,
+      multipleServings: {},
     });
 
-    // Salvar receita
+    // Salvar receita automaticamente
     if (recipeName.trim()) {
       setSaving(true);
       try {
@@ -125,8 +124,10 @@ export default function NutritionCalculator() {
           kcalPerServing,
         });
         await loadSavedRecipes();
+        alert('Receita salva com sucesso!');
       } catch (error) {
         console.error('Erro ao salvar receita:', error);
+        alert('Erro ao salvar receita. Verifique o console.');
       } finally {
         setSaving(false);
       }
@@ -312,11 +313,6 @@ export default function NutritionCalculator() {
                       setResult({
                         ...result,
                         kcalPerServing,
-                        multipleServings: calculateMultipleServings(
-                          result.totalKcal,
-                          result.totalWeight_g,
-                          [25, 50, 100, 200]
-                        ),
                       });
                     }
                   }}
@@ -331,28 +327,11 @@ export default function NutritionCalculator() {
               )}
             </div>
 
-            {/* Tabela de Porções */}
-            <div className="border border-gray-200 rounded-xl overflow-hidden">
-              <div className="bg-gray-50 px-4 py-3 text-sm font-semibold text-gray-700">
-                Calorias por Porção
-              </div>
-              <div className="divide-y divide-gray-100">
-                <div className="flex items-center justify-between px-4 py-3">
-                  <span className="text-gray-600">Cada unidade ({servingWeight}g):</span>
-                  <span className="font-bold text-[#FF5C00]">{result.kcalPerServing} kcal</span>
-                </div>
-                <div className="flex items-center justify-between px-4 py-3 bg-gray-50/50">
-                  <span className="text-gray-600">Se fizer de 50g:</span>
-                  <span className="font-semibold text-gray-800">{result.multipleServings[50]} kcal</span>
-                </div>
-                <div className="flex items-center justify-between px-4 py-3">
-                  <span className="text-gray-600">Se fizer de 100g:</span>
-                  <span className="font-semibold text-gray-800">{result.multipleServings[100]} kcal</span>
-                </div>
-                <div className="flex items-center justify-between px-4 py-3 bg-gray-50/50">
-                  <span className="text-gray-600">Se fizer de 200g:</span>
-                  <span className="font-semibold text-gray-800">{result.multipleServings[200]} kcal</span>
-                </div>
+            {/* Resultado da Porção */}
+            <div className="bg-gradient-to-r from-[#FF5C00]/10 to-[#FF5C00]/5 rounded-2xl p-6">
+              <div className="text-center">
+                <p className="text-sm text-gray-600 mb-2">Cada porção de {servingWeight}g tem:</p>
+                <p className="text-5xl font-bold text-[#FF5C00]">{result.kcalPerServing} kcal</p>
               </div>
             </div>
 
