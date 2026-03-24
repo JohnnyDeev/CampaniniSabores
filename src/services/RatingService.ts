@@ -6,7 +6,8 @@ import {
   deleteDoc,
   doc,
   query,
-  orderBy
+  orderBy,
+  serverTimestamp
 } from 'firebase/firestore';
 import { db } from '../firebase';
 import type { Rating } from '../types';
@@ -31,4 +32,13 @@ export async function getRatings(): Promise<Rating[]> {
 
 export async function deleteRating(ratingId: string): Promise<void> {
   await deleteDoc(doc(db, 'ratings', ratingId));
+}
+
+export async function saveRating(rating: Omit<Rating, 'id'>): Promise<string> {
+  const ref = collection(db, 'ratings');
+  const docRef = await addDoc(ref, {
+    ...rating,
+    createdAt: serverTimestamp(),
+  });
+  return docRef.id;
 }

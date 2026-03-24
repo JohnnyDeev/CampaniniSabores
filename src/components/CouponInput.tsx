@@ -98,13 +98,13 @@ export default function CouponInput({
             }}
             onKeyDown={e => e.key === 'Enter' && handleApply()}
             disabled={loading}
-            className="w-full pl-9 pr-3 py-3 bg-white border border-[#F0E4DF] rounded-xl text-sm text-[#3D2A24] placeholder:text-[#8C7066] focus:ring-2 focus:ring-[#C75B48]/30 focus:border-[#C75B48] outline-none transition-all uppercase disabled:opacity-50"
+            className="w-full pl-9 pr-3 py-3 bg-white border border-[#F0E4DF] rounded-xl text-sm text-[#3D2A24] placeholder:text-[#8C7066] focus:ring-2 focus:ring-[#FF5C00]/30 focus:border-[#FF5C00] outline-none transition-all uppercase disabled:opacity-50"
           />
         </div>
         <button
           onClick={handleApply}
           disabled={!code.trim() || loading}
-          className="px-4 py-3 bg-[#C75B48] text-white text-sm font-medium rounded-xl hover:bg-[#A84838] transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
+          className="px-4 py-3 bg-[#FF5C00] text-white text-sm font-medium rounded-xl hover:bg-[#E65100] transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-1.5"
         >
           {loading ? <Loader2 size={16} className="animate-spin" /> : 'Aplicar'}
         </button>
@@ -134,3 +134,4 @@ export default function CouponInput({
     </div>
   );
 }
+

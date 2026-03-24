@@ -83,7 +83,7 @@ export function BagItemSkeleton() {
 
 export function OrderCardSkeleton() {
   return (
-    <div className="bg-[#FFF8F5] rounded-xl p-4 border border-[#F0E4DF]">
+    <div className="bg-[#FFF7F2] rounded-xl p-4 border border-[#F0E4DF]">
       <div className="flex justify-between mb-3">
         <Skeleton height="20px" width="100px" />
         <Skeleton height="16px" width="60px" />
@@ -98,7 +98,7 @@ export function OrderCardSkeleton() {
 
 export function ComboCardSkeleton() {
   return (
-    <div className="bg-gradient-to-br from-[#FFF8F5] to-[#FFF3E0] rounded-2xl p-4 border border-[#E8A849]/30">
+    <div className="bg-gradient-to-br from-[#FFF7F2] to-[#FFF3E0] rounded-2xl p-4 border border-[#FFB800]/30">
       <div className="flex justify-between mb-3">
         <Skeleton height="20px" width="70%" />
         <Skeleton height="24px" width="50px" />
@@ -109,3 +109,4 @@ export function ComboCardSkeleton() {
     </div>
   );
 }
+

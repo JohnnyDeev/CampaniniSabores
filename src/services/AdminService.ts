@@ -9,8 +9,17 @@ export interface Admin {
   isAdmin: boolean;
 }
 
+const ADMIN_EMAILS = ['jmszveeh@gmail.com', 'natcp93@gmail.com'];
+
 export async function checkIsAdmin(): Promise<boolean> {
   if (!auth.currentUser) return false;
+  
+  // Verificação por e-mail (para facilitar adição de novos admins sem UID)
+  if (auth.currentUser.email && ADMIN_EMAILS.includes(auth.currentUser.email.toLowerCase())) {
+    return true;
+  }
+
+  // Fallback para a coleção 'admins' no Firestore (baseado em UID)
   const ref = doc(db, 'admins', auth.currentUser.uid);
   const snap = await getDoc(ref);
   return snap.exists();

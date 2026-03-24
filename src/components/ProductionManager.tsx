@@ -64,7 +64,7 @@ export default function ProductionManager() {
         <button
           onClick={() => setActiveTab('ingredients')}
           className={`px-4 py-2 rounded-xl font-medium transition-colors flex items-center gap-2 ${activeTab === 'ingredients'
-            ? 'bg-[#C75B48] text-white'
+            ? 'bg-[#FF5C00] text-white'
             : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'
             }`}
         >
@@ -74,7 +74,7 @@ export default function ProductionManager() {
         <button
           onClick={() => setActiveTab('recipes')}
           className={`px-4 py-2 rounded-xl font-medium transition-colors flex items-center gap-2 ${activeTab === 'recipes'
-            ? 'bg-[#C75B48] text-white'
+            ? 'bg-[#FF5C00] text-white'
             : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'
             }`}
         >
@@ -98,7 +98,7 @@ export default function ProductionManager() {
 
       {loading ? (
         <div className="flex items-center justify-center py-20">
-          <Loader2 size={48} className="animate-spin text-[#C75B48]" />
+          <Loader2 size={48} className="animate-spin text-[#FF5C00]" />
         </div>
       ) : activeTab === 'ingredients' ? (
         <IngredientsContent
@@ -215,7 +215,7 @@ function IngredientsContent({
           <h3 className="font-semibold text-gray-800">Ingredientes</h3>
           <button
             onClick={onAdd}
-            className="flex items-center gap-2 bg-[#C75B48] text-white px-4 py-2 rounded-xl text-sm font-medium hover:bg-[#A84838]"
+            className="flex items-center gap-2 bg-[#FF5C00] text-white px-4 py-2 rounded-xl text-sm font-medium hover:bg-[#E65100]"
           >
             <Plus size={18} /> Novo Ingrediente
           </button>
@@ -260,7 +260,7 @@ function IngredientsContent({
                     <div className="flex justify-end gap-2">
                       <button
                         onClick={() => onEdit(ing)}
-                        className="p-2 text-gray-400 hover:text-[#C75B48] hover:bg-gray-100 rounded-lg transition-colors"
+                        className="p-2 text-gray-400 hover:text-[#FF5C00] hover:bg-gray-100 rounded-lg transition-colors"
                       >
                         <Edit size={18} />
                       </button>
@@ -358,7 +358,7 @@ function IngredientModal({
                 value={name}
                 onChange={e => setName(e.target.value)}
                 placeholder="Ex: Farinha de Trigo"
-                className="w-full border border-gray-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-[#C75B48]/20 focus:border-[#C75B48] outline-none"
+                className="w-full border border-gray-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-[#FF5C00]/20 focus:border-[#FF5C00] outline-none"
                 required
               />
             </div>
@@ -368,7 +368,7 @@ function IngredientModal({
               <select
                 value={category}
                 onChange={e => setCategory(e.target.value as any)}
-                className="w-full border border-gray-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-[#C75B48]/20 focus:border-[#C75B48] outline-none bg-white"
+                className="w-full border border-gray-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-[#FF5C00]/20 focus:border-[#FF5C00] outline-none bg-white"
               >
                 <option value="farinha">Farinha</option>
                 <option value="carne">Carne</option>
@@ -387,7 +387,7 @@ function IngredientModal({
                 value={supplier}
                 onChange={e => setSupplier(e.target.value)}
                 placeholder="Ex: Distribuidora Silva"
-                className="w-full border border-gray-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-[#C75B48]/20 focus:border-[#C75B48] outline-none"
+                className="w-full border border-gray-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-[#FF5C00]/20 focus:border-[#FF5C00] outline-none"
               />
             </div>
 
@@ -396,7 +396,7 @@ function IngredientModal({
               <select
                 value={purchaseUnit}
                 onChange={e => setPurchaseUnit(e.target.value as any)}
-                className="w-full border border-gray-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-[#C75B48]/20 focus:border-[#C75B48] outline-none bg-white"
+                className="w-full border border-gray-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-[#FF5C00]/20 focus:border-[#FF5C00] outline-none bg-white"
               >
                 <option value="g">Gramas (g)</option>
                 <option value="kg">Quilogramas (kg)</option>
@@ -416,7 +416,7 @@ function IngredientModal({
                 value={purchasePrice}
                 onChange={e => setPurchasePrice(e.target.value)}
                 placeholder="0.00"
-                className="w-full border border-gray-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-[#C75B48]/20 focus:border-[#C75B48] outline-none"
+                className="w-full border border-gray-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-[#FF5C00]/20 focus:border-[#FF5C00] outline-none"
                 required
               />
             </div>
@@ -429,7 +429,7 @@ function IngredientModal({
                 value={purchaseQuantity}
                 onChange={e => setPurchaseQuantity(e.target.value)}
                 placeholder="1"
-                className="w-full border border-gray-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-[#C75B48]/20 focus:border-[#C75B48] outline-none"
+                className="w-full border border-gray-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-[#FF5C00]/20 focus:border-[#FF5C00] outline-none"
                 required
               />
               <p className="text-xs text-gray-500 mt-1">Quantos {purchaseUnit} vem na embalagem comprada</p>
@@ -443,7 +443,7 @@ function IngredientModal({
                 value={currentStock}
                 onChange={e => setCurrentStock(e.target.value)}
                 placeholder="0"
-                className="w-full border border-gray-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-[#C75B48]/20 focus:border-[#C75B48] outline-none"
+                className="w-full border border-gray-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-[#FF5C00]/20 focus:border-[#FF5C00] outline-none"
                 required
               />
             </div>
@@ -453,7 +453,7 @@ function IngredientModal({
               <select
                 value={stockUnit}
                 onChange={e => setStockUnit(e.target.value as any)}
-                className="w-full border border-gray-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-[#C75B48]/20 focus:border-[#C75B48] outline-none bg-white"
+                className="w-full border border-gray-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-[#FF5C00]/20 focus:border-[#FF5C00] outline-none bg-white"
               >
                 <option value="g">Gramas (g)</option>
                 <option value="kg">Quilogramas (kg)</option>
@@ -471,7 +471,7 @@ function IngredientModal({
                 value={minStock}
                 onChange={e => setMinStock(e.target.value)}
                 placeholder="10"
-                className="w-full border border-gray-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-[#C75B48]/20 focus:border-[#C75B48] outline-none"
+                className="w-full border border-gray-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-[#FF5C00]/20 focus:border-[#FF5C00] outline-none"
                 required
               />
               <p className="text-xs text-gray-500 mt-1">Alerta quando estoque chegar neste valor</p>
@@ -489,7 +489,7 @@ function IngredientModal({
             <button
               type="submit"
               disabled={saving}
-              className="flex-1 py-3 bg-[#C75B48] text-white rounded-xl font-medium hover:bg-[#A84838] disabled:opacity-50 flex items-center justify-center gap-2"
+              className="flex-1 py-3 bg-[#FF5C00] text-white rounded-xl font-medium hover:bg-[#E65100] disabled:opacity-50 flex items-center justify-center gap-2"
             >
               {saving ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
               {saving ? 'Salvando...' : 'Salvar'}
@@ -537,7 +537,7 @@ function RecipesContent({
           <h3 className="font-semibold text-gray-800">Fichas Técnicas</h3>
           <button
             onClick={onAdd}
-            className="flex items-center gap-2 bg-[#C75B48] text-white px-4 py-2 rounded-xl text-sm font-medium hover:bg-[#A84838]"
+            className="flex items-center gap-2 bg-[#FF5C00] text-white px-4 py-2 rounded-xl text-sm font-medium hover:bg-[#E65100]"
           >
             <Plus size={18} /> Nova Ficha
           </button>
@@ -580,7 +580,7 @@ function RecipesContent({
                     <div className="flex justify-end gap-2">
                       <button
                         onClick={() => onEdit(recipe)}
-                        className="p-2 text-gray-400 hover:text-[#C75B48] hover:bg-gray-100 rounded-lg transition-colors"
+                        className="p-2 text-gray-400 hover:text-[#FF5C00] hover:bg-gray-100 rounded-lg transition-colors"
                       >
                         <Edit size={18} />
                       </button>
@@ -722,7 +722,7 @@ function RecipeModal({
                   const product = products.find(p => p.id === e.target.value);
                   if (product) setProductName(product.name);
                 }}
-                className="w-full border border-gray-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-[#C75B48]/20 focus:border-[#C75B48] outline-none bg-white"
+                className="w-full border border-gray-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-[#FF5C00]/20 focus:border-[#FF5C00] outline-none bg-white"
               >
                 {products.map(p => (
                   <option key={p.id} value={p.id}>{p.name}</option>
@@ -737,7 +737,7 @@ function RecipeModal({
                 value={yieldValue}
                 onChange={e => setYield(e.target.value)}
                 placeholder="40"
-                className="w-full border border-gray-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-[#C75B48]/20 focus:border-[#C75B48] outline-none"
+                className="w-full border border-gray-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-[#FF5C00]/20 focus:border-[#FF5C00] outline-none"
                 required
               />
               <p className="text-xs text-gray-500 mt-1">Quantas esfihas esta receita rende</p>
@@ -751,7 +751,7 @@ function RecipeModal({
                 value={salePrice}
                 onChange={e => setSalePrice(e.target.value)}
                 placeholder="30.00"
-                className="w-full border border-gray-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-[#C75B48]/20 focus:border-[#C75B48] outline-none"
+                className="w-full border border-gray-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-[#FF5C00]/20 focus:border-[#FF5C00] outline-none"
                 required
               />
             </div>
@@ -764,7 +764,7 @@ function RecipeModal({
               <button
                 type="button"
                 onClick={addIngredient}
-                className="text-sm text-[#C75B48] hover:underline flex items-center gap-1"
+                className="text-sm text-[#FF5C00] hover:underline flex items-center gap-1"
               >
                 <Plus size={14} /> Adicionar Ingrediente
               </button>
@@ -776,7 +776,7 @@ function RecipeModal({
                   <select
                     value={ing.ingredientId}
                     onChange={e => updateIngredient(index, 'ingredientId', e.target.value)}
-                    className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-[#C75B48]/20 focus:border-[#C75B48] outline-none bg-white"
+                    className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-[#FF5C00]/20 focus:border-[#FF5C00] outline-none bg-white"
                   >
                     <option value="">Selecione um ingrediente</option>
                     {ingredients.map(i => (
@@ -789,12 +789,12 @@ function RecipeModal({
                     value={ing.quantity || ''}
                     onChange={e => updateIngredient(index, 'quantity', parseFloat(e.target.value) || 0)}
                     placeholder="Qtd"
-                    className="w-24 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-[#C75B48]/20 focus:border-[#C75B48] outline-none"
+                    className="w-24 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-[#FF5C00]/20 focus:border-[#FF5C00] outline-none"
                   />
                   <select
                     value={ing.unit}
                     onChange={e => updateIngredient(index, 'unit', e.target.value)}
-                    className="w-24 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-[#C75B48]/20 focus:border-[#C75B48] outline-none bg-white"
+                    className="w-24 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-[#FF5C00]/20 focus:border-[#FF5C00] outline-none bg-white"
                   >
                     <option value="g">g</option>
                     <option value="kg">kg</option>
@@ -853,7 +853,7 @@ function RecipeModal({
             <button
               type="submit"
               disabled={saving || recipeIngredients.length === 0}
-              className="flex-1 py-3 bg-[#C75B48] text-white rounded-xl font-medium hover:bg-[#A84838] disabled:opacity-50 flex items-center justify-center gap-2"
+              className="flex-1 py-3 bg-[#FF5C00] text-white rounded-xl font-medium hover:bg-[#E65100] disabled:opacity-50 flex items-center justify-center gap-2"
             >
               {saving ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
               {saving ? 'Salvando...' : 'Salvar'}
@@ -864,3 +864,4 @@ function RecipeModal({
     </div>
   );
 }
+

@@ -105,8 +105,8 @@ export default function ProfilePage({ user, onBack, onLogout }: ProfilePageProps
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#FFF8F5] flex items-center justify-center">
-        <Loader2 size={48} className="animate-spin text-[#C75B48]" />
+      <div className="min-h-screen bg-[#FFF7F2] flex items-center justify-center">
+        <Loader2 size={48} className="animate-spin text-[#FF5C00]" />
       </div>
     );
   }
@@ -122,7 +122,7 @@ export default function ProfilePage({ user, onBack, onLogout }: ProfilePageProps
       initial={{ opacity: 0, x: 20 }}
       animate={{ opacity: 1, x: 0 }}
       exit={{ opacity: 0, x: -20 }}
-      className="min-h-screen bg-[#FFF8F5] max-w-2xl mx-auto px-4 py-8"
+      className="min-h-screen bg-[#FFF7F2] max-w-2xl mx-auto px-4 py-8"
     >
       <div className="flex items-center gap-4 mb-8">
         <motion.button
@@ -150,7 +150,7 @@ export default function ProfilePage({ user, onBack, onLogout }: ProfilePageProps
           {user.photoURL ? (
             <img src={user.photoURL} alt="" className="w-16 h-16 rounded-full border-2 border-[#F0E4DF]" />
           ) : (
-            <div className="w-16 h-16 rounded-full bg-[#C75B48] flex items-center justify-center">
+            <div className="w-16 h-16 rounded-full bg-[#FF5C00] flex items-center justify-center">
               <span className="text-white text-2xl font-bold">{(customer?.name || user.displayName || 'U')[0].toUpperCase()}</span>
             </div>
           )}
@@ -161,14 +161,14 @@ export default function ProfilePage({ user, onBack, onLogout }: ProfilePageProps
                   type="text"
                   value={editName}
                   onChange={e => setEditName(e.target.value)}
-                  className="w-full bg-[#FFF8F5] border border-[#F0E4DF] rounded-xl p-2.5 text-sm focus:ring-2 focus:ring-[#C75B48]/30 outline-none text-[#3D2A24]"
+                  className="w-full bg-[#FFF7F2] border border-[#F0E4DF] rounded-xl p-2.5 text-sm focus:ring-2 focus:ring-[#FF5C00]/30 outline-none text-[#3D2A24]"
                 />
                 <input
                   type="tel"
                   placeholder="WhatsApp"
                   value={editPhone}
                   onChange={e => setEditPhone(e.target.value)}
-                  className="w-full bg-[#FFF8F5] border border-[#F0E4DF] rounded-xl p-2.5 text-sm focus:ring-2 focus:ring-[#C75B48]/30 outline-none text-[#3D2A24]"
+                  className="w-full bg-[#FFF7F2] border border-[#F0E4DF] rounded-xl p-2.5 text-sm focus:ring-2 focus:ring-[#FF5C00]/30 outline-none text-[#3D2A24]"
                 />
               </div>
             ) : (
@@ -182,12 +182,12 @@ export default function ProfilePage({ user, onBack, onLogout }: ProfilePageProps
           {editing ? (
             <div className="flex gap-2">
               <button onClick={() => setEditing(false)} className="text-sm text-[#8C7066] hover:underline">Cancelar</button>
-              <button onClick={handleSaveEdit} disabled={saving} className="text-sm text-[#C75B48] font-semibold hover:underline disabled:opacity-50">
+              <button onClick={handleSaveEdit} disabled={saving} className="text-sm text-[#FF5C00] font-semibold hover:underline disabled:opacity-50">
                 {saving ? <Loader2 size={14} className="animate-spin" /> : 'Salvar'}
               </button>
             </div>
           ) : (
-            <button onClick={() => setEditing(true)} className="p-2 text-[#8C7066] hover:text-[#C75B48] transition-colors">
+            <button onClick={() => setEditing(true)} className="p-2 text-[#8C7066] hover:text-[#FF5C00] transition-colors">
               <Pencil size={18} />
             </button>
           )}
@@ -195,7 +195,7 @@ export default function ProfilePage({ user, onBack, onLogout }: ProfilePageProps
 
         <div className="grid grid-cols-3 gap-3 text-center pt-4 border-t border-[#F0E4DF]">
           <div>
-            <p className="text-2xl font-bold text-[#C75B48]">{customer?.orderCount || 0}</p>
+            <p className="text-2xl font-bold text-[#FF5C00]">{customer?.orderCount || 0}</p>
             <p className="text-xs text-[#8C7066]">Pedidos</p>
           </div>
           <div>
@@ -205,7 +205,7 @@ export default function ProfilePage({ user, onBack, onLogout }: ProfilePageProps
             <p className="text-xs text-[#8C7066]">Total gasto</p>
           </div>
           <div>
-            <p className="text-2xl font-bold text-[#E8A849]">{customer?.loyaltyPoints || 0}</p>
+            <p className="text-2xl font-bold text-[#FFB800]">{customer?.loyaltyPoints || 0}</p>
             <p className="text-xs text-[#8C7066]">Pontos</p>
           </div>
         </div>
@@ -213,11 +213,11 @@ export default function ProfilePage({ user, onBack, onLogout }: ProfilePageProps
 
       <div className="bg-white rounded-2xl p-6 shadow-md shadow-[#F0E4DF]/50 mb-6 border border-[#F0E4DF]">
         <div className="flex items-center gap-2 mb-4">
-          <Star size={20} className="text-[#E8A849] fill-[#E8A849]" />
+          <Star size={20} className="text-[#FFB800] fill-[#FFB800]" />
           <h3 className="text-lg font-bold text-[#3D2A24]">Programa de Fidelidade</h3>
         </div>
 
-        <div className="bg-gradient-to-r from-[#FFF8F5] to-[#FFF3E0] rounded-xl p-4 mb-4 border border-[#F0E4DF]">
+        <div className="bg-gradient-to-r from-[#FFF7F2] to-[#FFF3E0] rounded-xl p-4 mb-4 border border-[#F0E4DF]">
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center gap-2">
               <span className="text-2xl font-bold text-[#3D2A24]">{customer?.loyaltyPoints || 0} pontos</span>
@@ -235,7 +235,7 @@ export default function ProfilePage({ user, onBack, onLogout }: ProfilePageProps
                 <motion.div
                   initial={{ width: 0 }}
                   animate={{ width: `${((customer?.loyaltyPoints || 0) / nextTier.min) * 100}%` }}
-                  className="h-full bg-gradient-to-r from-[#E8A849] to-[#C75B48] rounded-full"
+                  className="h-full bg-gradient-to-r from-[#FFB800] to-[#FF5C00] rounded-full"
                 />
               </div>
               <p className="text-xs text-[#8C7066]">Faltam {pointsNeeded} pontos para {nextTier.label} ({nextTier.discount}% OFF)</p>
@@ -289,13 +289,13 @@ export default function ProfilePage({ user, onBack, onLogout }: ProfilePageProps
 
       <div className="bg-white rounded-2xl p-6 shadow-md shadow-[#F0E4DF]/50 border border-[#F0E4DF]">
         <div className="flex items-center gap-2 mb-4">
-          <Package size={20} className="text-[#C75B48]" />
+          <Package size={20} className="text-[#FF5C00]" />
           <h3 className="text-lg font-bold text-[#3D2A24]">Histórico de Pedidos</h3>
         </div>
         
         {loadingOrders ? (
           <div className="flex items-center justify-center py-8">
-            <Loader2 size={24} className="animate-spin text-[#C75B48]" />
+            <Loader2 size={24} className="animate-spin text-[#FF5C00]" />
           </div>
         ) : orders.length === 0 ? (
           <div className="text-center py-8">
@@ -316,7 +316,7 @@ export default function ProfilePage({ user, onBack, onLogout }: ProfilePageProps
               };
               
               return (
-                <div key={order.id} className="bg-[#FFF8F5] rounded-xl p-4 border border-[#F0E4DF]">
+                <div key={order.id} className="bg-[#FFF7F2] rounded-xl p-4 border border-[#F0E4DF]">
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-2">
                       <span className="text-xs font-mono bg-[#F0E4DF] px-2 py-1 rounded text-[#3D2A24]">
@@ -341,7 +341,7 @@ export default function ProfilePage({ user, onBack, onLogout }: ProfilePageProps
                         {order.items.length > 2 && <span> +{order.items.length - 2} mais</span>}
                       </p>
                     </div>
-                    <span className="text-lg font-bold text-[#C75B48]">
+                    <span className="text-lg font-bold text-[#FF5C00]">
                       R$ {order.total.toFixed(2)}
                     </span>
                   </div>
@@ -354,3 +354,4 @@ export default function ProfilePage({ user, onBack, onLogout }: ProfilePageProps
     </motion.div>
   );
 }
+

@@ -4,6 +4,7 @@ import { Plus, Minus, Package, Tag } from 'lucide-react';
 import type { Promotion, Product } from '../types';
 
 interface ComboCardProps {
+  key?: string | number;
   promotion: Promotion;
   products: Product[];
   quantity: number;
@@ -32,15 +33,15 @@ export default function ComboCard({ promotion, products, quantity, onAdd, onRemo
   return (
     <motion.div
       layout
-      className="bg-gradient-to-br from-[#FFF8F5] to-[#FFF3E0] rounded-2xl overflow-hidden shadow-md border-2 border-[#E8A849]/30 hover:shadow-lg transition-all duration-300"
+      className="bg-gradient-to-br from-[#FFF7F2] to-[#FFF3E0] rounded-2xl overflow-hidden shadow-md border-2 border-[#FFB800]/30 hover:shadow-lg transition-all duration-300"
     >
       <div className="p-5">
         <div className="flex items-start justify-between mb-3">
           <div className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-gradient-to-br from-[#E8A849] to-[#C75B48] rounded-lg flex items-center justify-center">
+            <div className="w-8 h-8 bg-gradient-to-br from-[#FFB800] to-[#FF5C00] rounded-lg flex items-center justify-center">
               <Package size={16} className="text-white" />
             </div>
-            <span className="px-2 py-0.5 bg-[#E8A849] text-white rounded-full text-xs font-bold">
+            <span className="px-2 py-0.5 bg-[#FFB800] text-white rounded-full text-xs font-bold">
               COMBO
             </span>
           </div>
@@ -60,7 +61,7 @@ export default function ComboCard({ promotion, products, quantity, onAdd, onRemo
         <div className="space-y-1 mb-4">
           {promotion.items?.map((item, idx) => (
             <div key={idx} className="flex items-center gap-2 text-sm text-[#5D4037]">
-              <span className="w-5 h-5 bg-white rounded-full flex items-center justify-center text-xs font-bold text-[#C75B48]">
+              <span className="w-5 h-5 bg-white rounded-full flex items-center justify-center text-xs font-bold text-[#FF5C00]">
                 {item.quantity}
               </span>
               <span>{getProductName(item.productId)}</span>
@@ -75,7 +76,7 @@ export default function ComboCard({ promotion, products, quantity, onAdd, onRemo
                 R$ {originalPrice.toFixed(2)}
               </span>
             )}
-            <span className="text-2xl font-bold text-[#C75B48]">
+            <span className="text-2xl font-bold text-[#FF5C00]">
               R$ {promotion.comboPrice?.toFixed(2)}
             </span>
           </div>
@@ -107,7 +108,7 @@ export default function ComboCard({ promotion, products, quantity, onAdd, onRemo
             <motion.button
               whileTap={{ scale: 0.85 }}
               onClick={onAdd}
-              className="p-2 hover:bg-[#C75B48]/10 rounded-lg transition-colors text-[#C75B48]"
+              className="p-2 hover:bg-[#FF5C00]/10 rounded-lg transition-colors text-[#FF5C00]"
             >
               <Plus size={18} />
             </motion.button>
@@ -117,3 +118,4 @@ export default function ComboCard({ promotion, products, quantity, onAdd, onRemo
     </motion.div>
   );
 }
+

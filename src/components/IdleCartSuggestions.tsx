@@ -19,10 +19,10 @@ export default function IdleCartSuggestions({
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
-      className="bg-gradient-to-br from-[#FFF8F5] to-[#FFF3E0] rounded-2xl p-5 border border-[#E8A849]/30"
+      className="bg-gradient-to-br from-[#FFF7F2] to-[#FFF3E0] rounded-2xl p-5 border border-[#FFB800]/30"
     >
       <div className="flex items-center gap-2 mb-4">
-        <Sparkles size={20} className="text-[#E8A849]" />
+        <Sparkles size={20} className="text-[#FFB800]" />
         <h3 className="text-lg font-bold text-[#3D2A24]">Sugestões pra você</h3>
       </div>
       
@@ -45,7 +45,7 @@ export default function IdleCartSuggestions({
                 <h4 className="text-sm font-semibold text-[#3D2A24] line-clamp-1">
                   {product.name}
                 </h4>
-                <span className="text-sm font-bold text-[#C75B48]">
+                <span className="text-sm font-bold text-[#FF5C00]">
                   R$ {product.price.toFixed(2)}
                 </span>
               </div>
@@ -54,8 +54,8 @@ export default function IdleCartSuggestions({
                 onClick={() => onAddProduct(product.id)}
                 className={`w-full py-2 rounded-lg text-sm font-medium transition-all flex items-center justify-center gap-1 ${
                   quantity > 0
-                    ? 'bg-[#C75B48] text-white'
-                    : 'bg-[#FFF8F5] text-[#C75B48] hover:bg-[#C75B48] hover:text-white'
+                    ? 'bg-[#FF5C00] text-white'
+                    : 'bg-[#FFF7F2] text-[#FF5C00] hover:bg-[#FF5C00] hover:text-white'
                 }`}
               >
                 {quantity > 0 ? (
@@ -86,7 +86,7 @@ export function EmptyBagCTA() {
       className="text-center py-8"
     >
       <div className="w-16 h-16 bg-[#F0E4DF] rounded-full flex items-center justify-center mx-auto mb-4">
-        <Sparkles size={32} className="text-[#C75B48]" />
+        <Sparkles size={32} className="text-[#FF5C00]" />
       </div>
       <h3 className="text-xl font-bold text-[#3D2A24] mb-2">
         Sua sacola está vazia
@@ -97,3 +97,4 @@ export function EmptyBagCTA() {
     </motion.div>
   );
 }
+

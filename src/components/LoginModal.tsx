@@ -137,7 +137,7 @@ export default function LoginModal({ isOpen, onClose, onLogin, mode: initialMode
           >
             <button
               onClick={onClose}
-              className="absolute top-4 right-4 p-2 text-[#8C7066] hover:text-[#3D2A24] hover:bg-[#FFF8F5] rounded-lg transition-colors"
+              className="absolute top-4 right-4 p-2 text-[#8C7066] hover:text-[#3D2A24] hover:bg-[#FFF7F2] rounded-lg transition-colors"
             >
               <X size={20} />
             </button>
@@ -160,7 +160,7 @@ export default function LoginModal({ isOpen, onClose, onLogin, mode: initialMode
                     value={email}
                     onChange={e => setEmail(e.target.value)}
                     required
-                    className="w-full bg-[#FFF8F5] border border-[#F0E4DF] rounded-xl p-4 focus:ring-2 focus:ring-[#C75B48]/30 focus:border-[#C75B48] outline-none transition-all text-[#3D2A24]"
+                    className="w-full bg-[#FFF7F2] border border-[#F0E4DF] rounded-xl p-4 focus:ring-2 focus:ring-[#FF5C00]/30 focus:border-[#FF5C00] outline-none transition-all text-[#3D2A24]"
                   />
                   <div className="relative">
                     <input
@@ -169,7 +169,7 @@ export default function LoginModal({ isOpen, onClose, onLogin, mode: initialMode
                       value={password}
                       onChange={e => setPassword(e.target.value)}
                       required
-                      className="w-full bg-[#FFF8F5] border border-[#F0E4DF] rounded-xl p-4 pr-12 focus:ring-2 focus:ring-[#C75B48]/30 focus:border-[#C75B48] outline-none transition-all text-[#3D2A24]"
+                      className="w-full bg-[#FFF7F2] border border-[#F0E4DF] rounded-xl p-4 pr-12 focus:ring-2 focus:ring-[#FF5C00]/30 focus:border-[#FF5C00] outline-none transition-all text-[#3D2A24]"
                     />
                     <button
                       type="button"
@@ -182,7 +182,7 @@ export default function LoginModal({ isOpen, onClose, onLogin, mode: initialMode
                   <button
                     type="submit"
                     disabled={loading}
-                    className="w-full bg-gradient-to-r from-[#C75B48] to-[#A84838] text-white py-4 rounded-xl font-handwritten font-semibold text-lg shadow-lg shadow-[#C75B48]/20 flex items-center justify-center gap-2 disabled:opacity-50"
+                    className="w-full bg-gradient-to-r from-[#FF5C00] to-[#E65100] text-white py-4 rounded-xl font-handwritten font-semibold text-lg shadow-lg shadow-[#FF5C00]/20 flex items-center justify-center gap-2 disabled:opacity-50"
                   >
                     {loading ? <Loader2 size={20} className="animate-spin" /> : 'Entrar'}
                   </button>
@@ -190,7 +190,7 @@ export default function LoginModal({ isOpen, onClose, onLogin, mode: initialMode
 
                 <button
                   onClick={() => switchMode('reset')}
-                  className="w-full text-sm text-[#C75B48] mb-4 hover:underline"
+                  className="w-full text-sm text-[#FF5C00] mb-4 hover:underline"
                 >
                   Esqueci minha senha
                 </button>
@@ -204,7 +204,7 @@ export default function LoginModal({ isOpen, onClose, onLogin, mode: initialMode
                 <button
                   onClick={handleGoogleLogin}
                   disabled={loading}
-                  className="w-full bg-white border-2 border-[#F0E4DF] rounded-xl py-4 px-6 font-medium text-[#3D2A24] hover:bg-[#FFF8F5] hover:border-[#E8A849] transition-all flex items-center justify-center gap-3 shadow-sm disabled:opacity-50"
+                  className="w-full bg-white border-2 border-[#F0E4DF] rounded-xl py-4 px-6 font-medium text-[#3D2A24] hover:bg-[#FFF7F2] hover:border-[#FFB800] transition-all flex items-center justify-center gap-3 shadow-sm disabled:opacity-50"
                 >
                   <svg className="w-5 h-5" viewBox="0 0 24 24">
                     <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
@@ -217,7 +217,7 @@ export default function LoginModal({ isOpen, onClose, onLogin, mode: initialMode
 
                 <p className="text-center text-sm text-[#8C7066] mt-4">
                   Não tem conta?{' '}
-                  <button onClick={() => switchMode('register')} className="text-[#C75B48] font-semibold hover:underline">
+                  <button onClick={() => switchMode('register')} className="text-[#FF5C00] font-semibold hover:underline">
                     Criar conta
                   </button>
                 </p>
@@ -242,7 +242,7 @@ export default function LoginModal({ isOpen, onClose, onLogin, mode: initialMode
                     value={name}
                     onChange={e => setName(e.target.value)}
                     required
-                    className="w-full bg-[#FFF8F5] border border-[#F0E4DF] rounded-xl p-4 focus:ring-2 focus:ring-[#C75B48]/30 focus:border-[#C75B48] outline-none transition-all text-[#3D2A24]"
+                    className="w-full bg-[#FFF7F2] border border-[#F0E4DF] rounded-xl p-4 focus:ring-2 focus:ring-[#FF5C00]/30 focus:border-[#FF5C00] outline-none transition-all text-[#3D2A24]"
                   />
                   <input
                     type="email"
@@ -250,14 +250,14 @@ export default function LoginModal({ isOpen, onClose, onLogin, mode: initialMode
                     value={email}
                     onChange={e => setEmail(e.target.value)}
                     required
-                    className="w-full bg-[#FFF8F5] border border-[#F0E4DF] rounded-xl p-4 focus:ring-2 focus:ring-[#C75B48]/30 focus:border-[#C75B48] outline-none transition-all text-[#3D2A24]"
+                    className="w-full bg-[#FFF7F2] border border-[#F0E4DF] rounded-xl p-4 focus:ring-2 focus:ring-[#FF5C00]/30 focus:border-[#FF5C00] outline-none transition-all text-[#3D2A24]"
                   />
                   <input
                     type="tel"
                     placeholder="WhatsApp (opcional)"
                     value={phone}
                     onChange={e => setPhone(e.target.value)}
-                    className="w-full bg-[#FFF8F5] border border-[#F0E4DF] rounded-xl p-4 focus:ring-2 focus:ring-[#C75B48]/30 focus:border-[#C75B48] outline-none transition-all text-[#3D2A24]"
+                    className="w-full bg-[#FFF7F2] border border-[#F0E4DF] rounded-xl p-4 focus:ring-2 focus:ring-[#FF5C00]/30 focus:border-[#FF5C00] outline-none transition-all text-[#3D2A24]"
                   />
                   <div className="relative">
                     <input
@@ -266,7 +266,7 @@ export default function LoginModal({ isOpen, onClose, onLogin, mode: initialMode
                       value={password}
                       onChange={e => setPassword(e.target.value)}
                       required
-                      className="w-full bg-[#FFF8F5] border border-[#F0E4DF] rounded-xl p-4 pr-12 focus:ring-2 focus:ring-[#C75B48]/30 focus:border-[#C75B48] outline-none transition-all text-[#3D2A24]"
+                      className="w-full bg-[#FFF7F2] border border-[#F0E4DF] rounded-xl p-4 pr-12 focus:ring-2 focus:ring-[#FF5C00]/30 focus:border-[#FF5C00] outline-none transition-all text-[#3D2A24]"
                     />
                     <button
                       type="button"
@@ -282,18 +282,18 @@ export default function LoginModal({ isOpen, onClose, onLogin, mode: initialMode
                     value={confirmPassword}
                     onChange={e => setConfirmPassword(e.target.value)}
                     required
-                    className="w-full bg-[#FFF8F5] border border-[#F0E4DF] rounded-xl p-4 focus:ring-2 focus:ring-[#C75B48]/30 focus:border-[#C75B48] outline-none transition-all text-[#3D2A24]"
+                    className="w-full bg-[#FFF7F2] border border-[#F0E4DF] rounded-xl p-4 focus:ring-2 focus:ring-[#FF5C00]/30 focus:border-[#FF5C00] outline-none transition-all text-[#3D2A24]"
                   />
                   <button
                     type="submit"
                     disabled={loading}
-                    className="w-full bg-gradient-to-r from-[#C75B48] to-[#A84838] text-white py-4 rounded-xl font-handwritten font-semibold text-lg shadow-lg shadow-[#C75B48]/20 flex items-center justify-center gap-2 disabled:opacity-50"
+                    className="w-full bg-gradient-to-r from-[#FF5C00] to-[#E65100] text-white py-4 rounded-xl font-handwritten font-semibold text-lg shadow-lg shadow-[#FF5C00]/20 flex items-center justify-center gap-2 disabled:opacity-50"
                   >
                     {loading ? <Loader2 size={20} className="animate-spin" /> : 'Criar conta'}
                   </button>
                 </form>
 
-                <div className="bg-[#FFF8F5] rounded-xl p-4 mb-4 border border-[#F0E4DF]">
+                <div className="bg-[#FFF7F2] rounded-xl p-4 mb-4 border border-[#F0E4DF]">
                   <p className="text-sm text-[#5D4037] font-medium mb-2">Ao criar conta, você:</p>
                   <ul className="text-xs text-[#8C7066] space-y-1">
                     <li>✦ Acompanha seus pedidos em tempo real</li>
@@ -304,7 +304,7 @@ export default function LoginModal({ isOpen, onClose, onLogin, mode: initialMode
 
                 <p className="text-center text-sm text-[#8C7066]">
                   Já tem conta?{' '}
-                  <button onClick={() => switchMode('login')} className="text-[#C75B48] font-semibold hover:underline">
+                  <button onClick={() => switchMode('login')} className="text-[#FF5C00] font-semibold hover:underline">
                     Fazer login
                   </button>
                 </p>
@@ -329,12 +329,12 @@ export default function LoginModal({ isOpen, onClose, onLogin, mode: initialMode
                     value={email}
                     onChange={e => setEmail(e.target.value)}
                     required
-                    className="w-full bg-[#FFF8F5] border border-[#F0E4DF] rounded-xl p-4 focus:ring-2 focus:ring-[#C75B48]/30 focus:border-[#C75B48] outline-none transition-all text-[#3D2A24]"
+                    className="w-full bg-[#FFF7F2] border border-[#F0E4DF] rounded-xl p-4 focus:ring-2 focus:ring-[#FF5C00]/30 focus:border-[#FF5C00] outline-none transition-all text-[#3D2A24]"
                   />
                   <button
                     type="submit"
                     disabled={loading}
-                    className="w-full bg-gradient-to-r from-[#C75B48] to-[#A84838] text-white py-4 rounded-xl font-handwritten font-semibold text-lg shadow-lg shadow-[#C75B48]/20 flex items-center justify-center gap-2 disabled:opacity-50"
+                    className="w-full bg-gradient-to-r from-[#FF5C00] to-[#E65100] text-white py-4 rounded-xl font-handwritten font-semibold text-lg shadow-lg shadow-[#FF5C00]/20 flex items-center justify-center gap-2 disabled:opacity-50"
                   >
                     {loading ? <Loader2 size={20} className="animate-spin" /> : 'Enviar email'}
                   </button>
@@ -342,7 +342,7 @@ export default function LoginModal({ isOpen, onClose, onLogin, mode: initialMode
 
                 <p className="text-center text-sm text-[#8C7066]">
                   Lembrou a senha?{' '}
-                  <button onClick={() => switchMode('login')} className="text-[#C75B48] font-semibold hover:underline">
+                  <button onClick={() => switchMode('login')} className="text-[#FF5C00] font-semibold hover:underline">
                     Fazer login
                   </button>
                 </p>
@@ -354,3 +354,4 @@ export default function LoginModal({ isOpen, onClose, onLogin, mode: initialMode
     </AnimatePresence>
   );
 }
+

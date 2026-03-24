@@ -107,7 +107,7 @@ function RefreshIndicator({ progress, isRefreshing }: { progress: number; isRefr
   return (
     <div className="flex flex-col items-center gap-2">
       {isRefreshing ? (
-        <div className="w-8 h-8 border-4 border-[#C75B48] border-t-transparent rounded-full animate-spin" />
+        <div className="w-8 h-8 border-4 border-[#FF5C00] border-t-transparent rounded-full animate-spin" />
       ) : (
         <svg className="w-10 h-10 transform -rotate-90" viewBox="0 0 48 48">
           <circle
@@ -123,7 +123,7 @@ function RefreshIndicator({ progress, isRefreshing }: { progress: number; isRefr
             cy="24"
             r="20"
             fill="none"
-            stroke="#C75B48"
+            stroke="#FF5C00"
             strokeWidth="4"
             strokeDasharray={circumference}
             strokeDashoffset={circumference * (1 - progress)}
@@ -134,3 +134,4 @@ function RefreshIndicator({ progress, isRefreshing }: { progress: number; isRefr
     </div>
   );
 }
+

@@ -58,7 +58,7 @@ function AddToCartAnimations({ animations }: { animations: AddToCartAnimation[] 
             transition={{ duration: 0.8, ease: 'easeOut' }}
             className="absolute bottom-24 left-1/2 -translate-x-1/2"
           >
-            <div className="flex items-center gap-2 bg-[#C75B48] text-white px-4 py-2 rounded-full shadow-lg">
+            <div className="flex items-center gap-2 bg-[#FF5C00] text-white px-4 py-2 rounded-full shadow-lg">
               <motion.span
                 initial={{ scale: 0 }}
                 animate={{ scale: 1 }}
@@ -91,8 +91,8 @@ export function AddToBagButton({
       onClick={onClick}
       className={`p-2 rounded-lg transition-all flex items-center justify-center ${
         quantity > 0 
-          ? 'bg-[#C75B48]/10 text-[#C75B48] hover:bg-[#C75B48]/20' 
-          : 'bg-[#FFF8F5] text-[#C75B48] hover:bg-[#F0E4DF]'
+          ? 'bg-[#FF5C00]/10 text-[#FF5C00] hover:bg-[#FF5C00]/20' 
+          : 'bg-[#FFF7F2] text-[#FF5C00] hover:bg-[#F0E4DF]'
       }`}
     >
       <AnimatePresence mode="wait">
@@ -142,7 +142,8 @@ export function CartBadge() {
     <motion.span
       initial={{ scale: 0 }}
       animate={{ scale: 1 }}
-      className="absolute -top-1.5 -right-1.5 bg-gradient-to-r from-[#C75B48] to-[#A84838] text-white text-xs w-6 h-6 rounded-full flex items-center justify-center font-bold border-2 border-white shadow-md"
+      className="absolute -top-1.5 -right-1.5 bg-gradient-to-r from-[#FF5C00] to-[#E65100] text-white text-xs w-6 h-6 rounded-full flex items-center justify-center font-bold border-2 border-white shadow-md"
     />
   );
 }
+

@@ -64,8 +64,9 @@ import { checkIsAdmin, addAdmin, removeAdmin, getAllAdmins, getAdminCount, findU
 import { getReminders, createReminder, deleteReminder, markReminderAsCompleted, markAllRemindersAsRead } from './services/ReminderService';
 import { getReportStats, getSalesByDateRange, getTopProducts, getMonthlyRevenue, getDateRange, exportToCSV, type SalesData, type ProductSales, type ReportStats } from './services/ReportService';
 import { uploadProductImage, validateImageFile, formatFileSize, type UploadProgress } from './services/ImageUploadService';
+import { getBanners, addBanner, updateBanner, deleteBanner, toggleBannerStatus } from './services/BannerService';
 import ProductionManager from './components/ProductionManager';
-import type { Reminder } from './types';
+import type { Banner, Reminder } from './types';
 
 type FirebaseTimestamp = { toDate: () => Date };
 
@@ -114,14 +115,15 @@ const NAV_ITEMS = [
   { id: 'ratings', label: 'Avaliações', icon: Star },
   { id: 'reports', label: 'Relatórios', icon: BarChart3 },
   { id: 'reminders', label: 'Lembretes', icon: Bell },
+  { id: 'banners', label: 'Banners', icon: ImageIcon },
   { id: 'finance', label: 'Financeiro', icon: DollarSign },
   { id: 'settings', label: 'Configurações', icon: Settings },
 ];
 
 const STATUS_CONFIG: Record<string, { label: string; icon: typeof Package; color: string; bg: string }> = {
-  novo: { label: 'Novo', icon: Package, color: 'text-blue-600', bg: 'bg-blue-100' },
+  novo: { label: 'Novo', icon: Package, color: 'text-[#FF5C00]', bg: 'bg-blue-100' },
   producao: { label: 'Em Produção', icon: ChefHat, color: 'text-amber-600', bg: 'bg-amber-100' },
-  saiu: { label: 'Saiu', icon: Truck, color: 'text-purple-600', bg: 'bg-purple-100' },
+  saiu: { label: 'Saiu', icon: Truck, color: 'text-[#FF5C00]', bg: 'bg-purple-100' },
   entregue: { label: 'Entregue', icon: CheckCircle2, color: 'text-green-600', bg: 'bg-green-100' }
 };
 
@@ -177,6 +179,12 @@ export default function AdminApp() {
 
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [loadingCustomers, setLoadingCustomers] = useState(true);
+
+  const [banners, setBanners] = useState<Banner[]>([]);
+  const [loadingBanners, setLoadingBanners] = useState(true);
+  const [showBannerModal, setShowBannerModal] = useState(false);
+  const [editingBanner, setEditingBanner] = useState<Banner | null>(null);
+
   const [customersSubTab, setCustomersSubTab] = useState<'list' | 'loyalty'>('list');
   const [isAdmin, setIsAdmin] = useState(false);
   const [loadingAdmin, setLoadingAdmin] = useState(false);
@@ -238,6 +246,9 @@ export default function AdminApp() {
     }
     if (activeTab === 'reminders') {
       loadReminders();
+    }
+    if (activeTab === 'banners') {
+      loadBanners();
     }
   }, [activeTab]);
 
@@ -385,7 +396,7 @@ export default function AdminApp() {
 
   const saveProduct = async (productData: Omit<Product, 'id' | 'createdAt'>, imageFile?: File) => {
     try {
-      let imageUrl = productData.image;
+      let imageUrl = productData.image || '';
       let imagePath = '';
 
       if (imageFile) {
@@ -409,12 +420,12 @@ export default function AdminApp() {
         const productRef = doc(db, 'products', editingProduct.id);
         await updateDoc(productRef, {
           ...productData,
-          image: imageUrl
+          image: imageUrl || null
         });
       } else {
         const docRef = await addDoc(collection(db, 'products'), {
           ...productData,
-          image: imageUrl,
+          image: imageUrl || null,
           createdAt: serverTimestamp()
         });
       }
@@ -641,6 +652,7 @@ export default function AdminApp() {
     }
   };
 
+
   const loadCustomers = async () => {
     try {
       setLoadingCustomers(true);
@@ -650,6 +662,53 @@ export default function AdminApp() {
       console.error('Erro ao carregar clientes:', error);
     } finally {
       setLoadingCustomers(false);
+    }
+  };
+
+  const loadBanners = async () => {
+    try {
+      setLoadingBanners(true);
+      const data = await getBanners();
+      setBanners(data);
+    } catch (error) {
+      console.error('Erro ao carregar banners:', error);
+    } finally {
+      setLoadingBanners(false);
+    }
+  };
+
+  const handleSaveBanner = async (data: Omit<Banner, 'id' | 'createdAt'>, imageFile?: File) => {
+    try {
+      if (editingBanner) {
+        await updateBanner(editingBanner.id, data, imageFile);
+      } else {
+        await addBanner(data, imageFile);
+      }
+      await loadBanners();
+      setShowBannerModal(false);
+      setEditingBanner(null);
+    } catch (error) {
+      console.error('Erro ao salvar banner:', error);
+      alert(`Erro ao salvar banner: ${error instanceof Error ? error.message : 'Erro desconhecido'}`);
+    }
+  };
+
+  const handleDeleteBanner = async (bannerId: string) => {
+    if (!confirm('Tem certeza que deseja excluir este banner?')) return;
+    try {
+      await deleteBanner(bannerId);
+      await loadBanners();
+    } catch (error) {
+      console.error('Erro ao excluir banner:', error);
+    }
+  };
+
+  const handleToggleBannerStatus = async (banner: Banner) => {
+    try {
+      await toggleBannerStatus(banner.id, !banner.active);
+      await loadBanners();
+    } catch (error) {
+      console.error('Erro ao atualizar status do banner:', error);
     }
   };
 
@@ -670,7 +729,7 @@ export default function AdminApp() {
   if (loadingAuth) {
     return (
       <div className="min-h-screen bg-gray-100 flex items-center justify-center">
-        <Loader2 size={48} className="animate-spin text-[#C75B48]" />
+        <Loader2 size={48} className="animate-spin text-[#FF5C00]" />
       </div>
     );
   }
@@ -683,7 +742,7 @@ export default function AdminApp() {
           animate={{ opacity: 1, scale: 1, y: 0 }}
           className="bg-white rounded-3xl p-10 shadow-2xl max-w-md w-full text-center"
         >
-          <div className="w-24 h-24 bg-gradient-to-br from-[#C75B48] to-[#A84838] rounded-2xl flex items-center justify-center mx-auto mb-8 shadow-lg">
+          <div className="w-24 h-24 bg-gradient-to-br from-[#FF5C00] to-[#E65100] rounded-2xl flex items-center justify-center mx-auto mb-8 shadow-lg">
             <Settings size={48} className="text-white" />
           </div>
           <h1 className="text-3xl font-bold text-gray-800 mb-2">Painel Admin</h1>
@@ -714,13 +773,13 @@ export default function AdminApp() {
         className="bg-gray-900 text-white flex flex-col fixed h-full z-20"
       >
         <div className="p-6 border-b border-gray-800 flex items-center gap-4">
-          <div className="w-12 h-12 bg-gradient-to-br from-[#C75B48] to-[#A84838] rounded-xl flex items-center justify-center flex-shrink-0">
-            <Leaf size={24} className="text-white" />
+          <div className="w-12 h-12 bg-[#FF5C00] rounded-full flex items-center justify-center text-white font-bold text-2xl shadow-lg shadow-[#FF5C00]/20 flex-shrink-0">
+            C
           </div>
           {sidebarOpen && (
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-              <h1 className="font-bold text-lg">Campanini</h1>
-              <p className="text-xs text-gray-400">Sabores Admin</p>
+              <h1 className="font-bold text-lg tracking-tight uppercase leading-tight">CAMPANINI<br />SABORES</h1>
+              <p className="text-[10px] text-gray-500 font-bold uppercase tracking-widest leading-none">Admin</p>
             </motion.div>
           )}
         </div>
@@ -731,7 +790,7 @@ export default function AdminApp() {
               key={item.id}
               onClick={() => setActiveTab(item.id)}
               className={`w-full flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${activeTab === item.id
-                ? 'bg-[#C75B48] text-white shadow-lg shadow-[#C75B48]/30'
+                ? 'bg-[#FF5C00] text-white shadow-lg shadow-[#FF5C00]/30'
                 : 'text-gray-400 hover:bg-gray-800 hover:text-white'
                 }`}
             >
@@ -790,6 +849,7 @@ export default function AdminApp() {
                 {activeTab === 'customers' && 'Base de clientes'}
                 {activeTab === 'ratings' && 'Avaliações dos clientes'}
                 {activeTab === 'reports' && 'Relatórios e métricas'}
+                {activeTab === 'banners' && 'Gerenciar banners do site'}
                 {activeTab === 'settings' && 'Configurações da loja'}
               </p>
             </div>
@@ -825,7 +885,7 @@ export default function AdminApp() {
                                 onClick={() => handleNotificationClick('order', order.id)}
                                 className="w-full text-left p-2 hover:bg-gray-50 rounded-lg flex items-center gap-3"
                               >
-                                <div className="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center">
+                                <div className="w-8 h-8 rounded-full bg-blue-100 text-[#FF5C00] flex items-center justify-center">
                                   <ShoppingCart size={16} />
                                 </div>
                                 <div className="flex-1 min-w-0">
@@ -938,7 +998,7 @@ export default function AdminApp() {
               <a
                 href="/"
                 target="_blank"
-                className="text-sm text-[#C75B48] hover:underline flex items-center gap-1"
+                className="text-sm text-[#FF5C00] hover:underline flex items-center gap-1"
               >
                 Ver Site <Leaf size={14} />
               </a>
@@ -1078,6 +1138,24 @@ export default function AdminApp() {
           {activeTab === 'settings' && (
             <SettingsContent user={user} />
           )}
+
+          {/* Banners */}
+          {activeTab === 'banners' && (
+            <BannersContent
+              banners={banners}
+              loading={loadingBanners}
+              onAddNew={() => {
+                setEditingBanner(null);
+                setShowBannerModal(true);
+              }}
+              onEdit={(banner) => {
+                setEditingBanner(banner);
+                setShowBannerModal(true);
+              }}
+              onDelete={handleDeleteBanner}
+              onToggleActive={handleToggleBannerStatus}
+            />
+          )}
         </div>
       </main>
 
@@ -1114,6 +1192,16 @@ export default function AdminApp() {
             }}
           />
         )}
+        {showBannerModal && (
+          <BannerModal
+            banner={editingBanner}
+            onSave={handleSaveBanner}
+            onClose={() => {
+              setShowBannerModal(false);
+              setEditingBanner(null);
+            }}
+          />
+        )}
       </AnimatePresence>
     </div>
   );
@@ -1134,7 +1222,7 @@ function DashboardContent({ totalRevenue, totalOrders, avgRating, newOrders, loa
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
-        <Loader2 size={32} className="animate-spin text-[#C75B48]" />
+        <Loader2 size={32} className="animate-spin text-[#FF5C00]" />
       </div>
     );
   }
@@ -1158,9 +1246,9 @@ function DashboardContent({ totalRevenue, totalOrders, avgRating, newOrders, loa
         <div className="bg-white rounded-2xl p-6 shadow-sm">
           <div className="flex items-center justify-between mb-4">
             <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
-              <ShoppingCart size={24} className="text-blue-600" />
+              <ShoppingCart size={24} className="text-[#FF5C00]" />
             </div>
-            <span className="text-xs text-blue-600 font-medium flex items-center gap-1">
+            <span className="text-xs text-[#FF5C00] font-medium flex items-center gap-1">
               <TrendingUp size={12} /> +8%
             </span>
           </div>
@@ -1184,7 +1272,7 @@ function DashboardContent({ totalRevenue, totalOrders, avgRating, newOrders, loa
         <div className="bg-white rounded-2xl p-6 shadow-sm">
           <div className="flex items-center justify-between mb-4">
             <div className="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center">
-              <Package size={24} className="text-purple-600" />
+              <Package size={24} className="text-[#FF5C00]" />
             </div>
             <span className="w-2 h-2 bg-red-500 rounded-full animate-pulse"></span>
           </div>
@@ -1226,7 +1314,7 @@ function DashboardContent({ totalRevenue, totalOrders, avgRating, newOrders, loa
                 {ordersByDay.map((day, i) => (
                   <div key={i} className="flex-1 flex flex-col items-center gap-2">
                     <div
-                      className="w-full bg-gradient-to-t from-[#C75B48] to-[#E8A849] rounded-t-lg transition-all hover:opacity-80"
+                      className="w-full bg-gradient-to-t from-[#FF5C00] to-[#FFB800] rounded-t-lg transition-all hover:opacity-80"
                       style={{ height: `${(day.count / maxCount) * 180}px` }}
                       title={`${day.count} pedidos`}
                     />
@@ -1262,7 +1350,7 @@ function DashboardContent({ totalRevenue, totalOrders, avgRating, newOrders, loa
       <div className="bg-white rounded-2xl p-6 shadow-sm">
         <div className="flex items-center justify-between mb-6">
           <h3 className="font-semibold text-gray-800">Pedidos Recentes</h3>
-          <button className="text-sm text-[#C75B48] hover:underline">
+          <button className="text-sm text-[#FF5C00] hover:underline">
             Ver todos
           </button>
         </div>
@@ -1283,7 +1371,7 @@ function DashboardContent({ totalRevenue, totalOrders, avgRating, newOrders, loa
                   <p className="text-sm text-gray-500">{order.items.reduce((acc: number, i: any) => acc + i.quantity, 0)} itens</p>
                 </div>
                 <div className="text-right">
-                  <p className="font-bold text-[#C75B48]">{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(order.total)}</p>
+                  <p className="font-bold text-[#FF5C00]">{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(order.total)}</p>
                   <p className="text-xs text-gray-400">{toDate(order.createdAt).toLocaleString('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' })}</p>
                 </div>
               </div>
@@ -1384,7 +1472,7 @@ function OrdersContent({ orders, loadingOrders, products, onStatusChange, onTogg
         </div>
         <div className="bg-white rounded-2xl p-4 shadow-sm">
           <p className="text-sm text-gray-500 mb-1">Total Hoje</p>
-          <p className="text-2xl font-bold text-[#C75B48]">{formatCurrency(totalToday)}</p>
+          <p className="text-2xl font-bold text-[#FF5C00]">{formatCurrency(totalToday)}</p>
         </div>
         <div className="bg-white rounded-2xl p-4 shadow-sm">
           <p className="text-sm text-gray-500 mb-1">Recebido</p>
@@ -1419,7 +1507,7 @@ function OrdersContent({ orders, loadingOrders, products, onStatusChange, onTogg
                   key={label}
                   onClick={() => setFilter(values[i])}
                   className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${filter === values[i]
-                    ? 'bg-[#C75B48] text-white'
+                    ? 'bg-[#FF5C00] text-white'
                     : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                     }`}
                 >
@@ -1453,7 +1541,7 @@ function OrdersContent({ orders, loadingOrders, products, onStatusChange, onTogg
               <div
                 key={order.id}
                 className={`grid grid-cols-12 gap-4 px-4 py-3 items-center hover:bg-gray-50 transition-colors cursor-pointer ${order.status === 'novo' ? 'bg-blue-50/50' : ''
-                  } ${highlightId === order.id ? 'ring-2 ring-[#C75B48] ring-offset-2 bg-orange-50' : ''}`}
+                  } ${highlightId === order.id ? 'ring-2 ring-[#FF5C00] ring-offset-2 bg-orange-50' : ''}`}
                 onClick={() => setSelectedOrder(order)}
                 ref={highlightId === order.id ? (el) => el?.scrollIntoView({ behavior: 'smooth', block: 'center' }) : undefined}
               >
@@ -1472,7 +1560,7 @@ function OrdersContent({ orders, loadingOrders, products, onStatusChange, onTogg
                   <div className="text-sm text-gray-600">
                     {order.items.map((item: any, i: number) => (
                       <span key={i}>
-                        {item.comboId ? <span className="text-[#E8A849] font-medium">[COMBO]</span> : null}
+                        {item.comboId ? <span className="text-[#FFB800] font-medium">[COMBO]</span> : null}
                         {item.quantity}x {item.comboId ? (item.comboName || 'Combo') : getProductName(item.productId)}
                         {i < order.items.length - 1 ? ', ' : ''}
                       </span>
@@ -1486,7 +1574,7 @@ function OrdersContent({ orders, loadingOrders, products, onStatusChange, onTogg
                 </div>
 
                 <div className="col-span-1 text-right">
-                  <p className="font-bold text-[#C75B48]">{formatCurrency(order.total)}</p>
+                  <p className="font-bold text-[#FF5C00]">{formatCurrency(order.total)}</p>
                 </div>
 
                 <div className="col-span-1 flex justify-center">
@@ -1517,7 +1605,7 @@ function OrdersContent({ orders, loadingOrders, products, onStatusChange, onTogg
 
         {loadingOrders ? (
           <div className="flex items-center justify-center py-20">
-            <Loader2 size={32} className="animate-spin text-[#C75B48]" />
+            <Loader2 size={32} className="animate-spin text-[#FF5C00]" />
           </div>
         ) : sortedOrders.length === 0 ? (
           <div className="text-center py-20">
@@ -1618,7 +1706,7 @@ function OrderDetailsModal({
               <h4 className="font-semibold text-gray-800">Cliente</h4>
               <button
                 onClick={onCopy}
-                className="text-xs text-[#C75B48] hover:underline flex items-center gap-1"
+                className="text-xs text-[#FF5C00] hover:underline flex items-center gap-1"
               >
                 <Download size={12} /> Copiar pedido
               </button>
@@ -1637,10 +1725,10 @@ function OrderDetailsModal({
               {order.items.map((item: any, i: number) => {
                 if (item.comboId) {
                   return (
-                    <div key={i} className="flex justify-between items-center py-2 border-b border-gray-100 last:border-0 bg-[#FFF8F5] rounded-lg px-3">
+                    <div key={i} className="flex justify-between items-center py-2 border-b border-gray-100 last:border-0 bg-[#FFF7F2] rounded-lg px-3">
                       <div>
                         <div className="flex items-center gap-2 mb-1">
-                          <span className="px-1.5 py-0.5 bg-[#E8A849] text-white rounded text-xs font-bold">COMBO</span>
+                          <span className="px-1.5 py-0.5 bg-[#FFB800] text-white rounded text-xs font-bold">COMBO</span>
                           <p className="text-gray-800 font-medium">{item.quantity}x {item.comboName || 'Combo'}</p>
                         </div>
                         {item.comboItems?.map((ci: any, ciIdx: number) => (
@@ -1648,7 +1736,7 @@ function OrderDetailsModal({
                             {ci.quantity}x {getProductName(ci.productId)}
                           </p>
                         ))}
-                        <p className="text-xs text-[#C75B48] mt-1 font-medium">
+                        <p className="text-xs text-[#FF5C00] mt-1 font-medium">
                           R$ {((item.comboPrice || 0) * item.quantity).toFixed(2)}
                         </p>
                       </div>
@@ -1668,7 +1756,7 @@ function OrderDetailsModal({
             </div>
             <div className="flex justify-between items-center pt-4 mt-4 border-t-2 border-gray-200">
               <span className="font-bold text-gray-800">Total</span>
-              <span className="text-xl font-bold text-[#C75B48]">{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(order.total)}</span>
+              <span className="text-xl font-bold text-[#FF5C00]">{new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(order.total)}</span>
             </div>
           </div>
 
@@ -1734,7 +1822,7 @@ function OrderDetailsModal({
               onChange={(e) => onNotesChange(e.target.value)}
               placeholder="Adicione notas sobre este pedido..."
               rows={3}
-              className="w-full p-4 border border-gray-200 rounded-2xl resize-none focus:ring-2 focus:ring-[#C75B48]/20 focus:border-[#C75B48] outline-none"
+              className="w-full p-4 border border-gray-200 rounded-2xl resize-none focus:ring-2 focus:ring-[#FF5C00]/20 focus:border-[#FF5C00] outline-none"
             />
             <p className="text-xs text-gray-400 mt-1">Estas notas são apenas para você</p>
           </div>
@@ -1833,8 +1921,22 @@ function ProductsContent({
 
   return (
     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
-      {/* Controles de Filtro e Busca */}
+      {/* Cabeçalho e Busca */}
       <div className="bg-white rounded-2xl shadow-sm p-6 mb-6">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+          <div>
+            <h3 className="text-xl font-bold text-gray-800">Produtos</h3>
+            <p className="text-sm text-gray-500">Gerencie seu cardápio, preços e disponibilidade</p>
+          </div>
+          <button
+            onClick={onAddNew}
+            className="flex items-center justify-center gap-2 px-6 py-3 bg-[#FF5C00] text-white rounded-xl hover:bg-[#E65200] transition-all font-bold shadow-lg shadow-[#FF5C00]/20 active:scale-95"
+          >
+            <Plus size={20} />
+            <span>Adicionar Novo Produto</span>
+          </button>
+        </div>
+
         <div className="flex flex-col lg:flex-row gap-4">
           {/* Busca */}
           <div className="flex-1">
@@ -1845,7 +1947,7 @@ function ProductsContent({
                 placeholder="Buscar produtos por nome ou descrição..."
                 value={searchTerm}
                 onChange={e => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#C75B48]/20 focus:border-[#C75B48] outline-none transition-all"
+                className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-xl focus:ring-2 focus:ring-[#FF5C00]/20 focus:border-[#FF5C00] outline-none transition-all"
               />
               {searchTerm && (
                 <button
@@ -1864,7 +1966,7 @@ function ProductsContent({
             <select
               value={categoryFilter}
               onChange={e => setCategoryFilter(e.target.value as typeof categoryFilter)}
-              className="px-4 py-2.5 border border-gray-200 rounded-xl text-sm font-medium bg-white focus:ring-2 focus:ring-[#C75B48]/20 focus:border-[#C75B48] outline-none"
+              className="px-4 py-2.5 border border-gray-200 rounded-xl text-sm font-medium bg-white focus:ring-2 focus:ring-[#FF5C00]/20 focus:border-[#FF5C00] outline-none"
             >
               <option value="all">Todas Categorias</option>
               <option value="tradicional">Tradicional</option>
@@ -1875,7 +1977,7 @@ function ProductsContent({
             <select
               value={statusFilter}
               onChange={e => setStatusFilter(e.target.value as typeof statusFilter)}
-              className="px-4 py-2.5 border border-gray-200 rounded-xl text-sm font-medium bg-white focus:ring-2 focus:ring-[#C75B48]/20 focus:border-[#C75B48] outline-none"
+              className="px-4 py-2.5 border border-gray-200 rounded-xl text-sm font-medium bg-white focus:ring-2 focus:ring-[#FF5C00]/20 focus:border-[#FF5C00] outline-none"
             >
               <option value="all">Todos Status</option>
               <option value="active">Ativos</option>
@@ -1890,7 +1992,7 @@ function ProductsContent({
                 setSortBy(field as typeof sortBy);
                 setSortOrder(order as typeof sortOrder);
               }}
-              className="px-4 py-2.5 border border-gray-200 rounded-xl text-sm font-medium bg-white focus:ring-2 focus:ring-[#C75B48]/20 focus:border-[#C75B48] outline-none"
+              className="px-4 py-2.5 border border-gray-200 rounded-xl text-sm font-medium bg-white focus:ring-2 focus:ring-[#FF5C00]/20 focus:border-[#FF5C00] outline-none"
             >
               <option value="name-asc">Nome (A-Z)</option>
               <option value="name-desc">Nome (Z-A)</option>
@@ -1904,14 +2006,14 @@ function ProductsContent({
             <div className="flex border border-gray-200 rounded-xl overflow-hidden">
               <button
                 onClick={() => setViewMode('grid')}
-                className={`px-3 py-2.5 transition-colors ${viewMode === 'grid' ? 'bg-[#C75B48] text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}
+                className={`px-3 py-2.5 transition-colors ${viewMode === 'grid' ? 'bg-[#FF5C00] text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}
                 title="Visualização em Grid"
               >
                 <Grid3X3 size={18} />
               </button>
               <button
                 onClick={() => setViewMode('list')}
-                className={`px-3 py-2.5 transition-colors ${viewMode === 'list' ? 'bg-[#C75B48] text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}
+                className={`px-3 py-2.5 transition-colors ${viewMode === 'list' ? 'bg-[#FF5C00] text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}
                 title="Visualização em Lista"
               >
                 <List size={18} />
@@ -1925,7 +2027,7 @@ function ProductsContent({
           <p className="text-sm text-gray-500">
             Mostrando <span className="font-semibold text-gray-800">{sortedProducts.length}</span> de{' '}
             <span className="font-semibold text-gray-800">{products.length}</span> produtos
-            {searchTerm && <span> para "<span className="text-[#C75B48]">{searchTerm}</span>"</span>}
+            {searchTerm && <span> para "<span className="text-[#FF5C00]">{searchTerm}</span>"</span>}
           </p>
           {(searchTerm || categoryFilter !== 'all' || statusFilter !== 'all') && (
             <button
@@ -1934,7 +2036,7 @@ function ProductsContent({
                 setCategoryFilter('all');
                 setStatusFilter('all');
               }}
-              className="text-sm text-[#C75B48] hover:underline flex items-center gap-1"
+              className="text-sm text-[#FF5C00] hover:underline flex items-center gap-1"
             >
               <RefreshCw size={14} /> Limpar filtros
             </button>
@@ -1946,7 +2048,7 @@ function ProductsContent({
       <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
         {loadingProducts ? (
           <div className="flex items-center justify-center py-20">
-            <Loader2 size={48} className="animate-spin text-[#C75B48]" />
+            <Loader2 size={48} className="animate-spin text-[#FF5C00]" />
           </div>
         ) : sortedProducts.length === 0 ? (
           <div className="text-center py-20">
@@ -1960,7 +2062,7 @@ function ProductsContent({
                   setCategoryFilter('all');
                   setStatusFilter('all');
                 }}
-                className="mt-4 text-[#C75B48] hover:underline text-sm font-medium"
+                className="mt-4 text-[#FF5C00] hover:underline text-sm font-medium"
               >
                 Limpar filtros
               </button>
@@ -1990,11 +2092,11 @@ function ProductsContent({
                   <tr key={product.id} className="hover:bg-gray-50 transition-colors">
                     <td className="px-6 py-4">
                       <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 bg-[#FFF8F5] rounded-lg flex items-center justify-center overflow-hidden">
+                        <div className="w-10 h-10 bg-[#FFF7F2] rounded-lg flex items-center justify-center overflow-hidden">
                           {product.image ? (
                             <img src={product.image} alt="" className="w-full h-full object-cover" />
                           ) : (
-                            <ImageIcon size={20} className="text-[#C75B48]" />
+                            <ImageIcon size={20} className="text-[#FF5C00]" />
                           )}
                         </div>
                         <div>
@@ -2005,7 +2107,7 @@ function ProductsContent({
                     </td>
                     <td className="px-6 py-4">
                       <span className={`px-3 py-1 rounded-full text-xs font-medium ${product.category === 'tradicional'
-                        ? 'bg-[#C75B48]/10 text-[#C75B48]'
+                        ? 'bg-[#FF5C00]/10 text-[#FF5C00]'
                         : 'bg-green-100 text-green-700'
                         }`}>
                         {product.category === 'tradicional' ? 'Tradicional' : 'Fit'}
@@ -2036,7 +2138,7 @@ function ProductsContent({
                       <div className="flex justify-end gap-2">
                         <button
                           onClick={() => onEdit(product)}
-                          className="p-2 text-gray-400 hover:text-[#C75B48] hover:bg-gray-100 rounded-lg transition-colors"
+                          className="p-2 text-gray-400 hover:text-[#FF5C00] hover:bg-gray-100 rounded-lg transition-colors"
                         >
                           <Edit size={18} />
                         </button>
@@ -2060,21 +2162,21 @@ function ProductsContent({
               {sortedProducts.map(product => (
                 <div
                   key={product.id}
-                  className="bg-gray-50 rounded-2xl overflow-hidden border border-gray-100 hover:shadow-lg hover:border-[#C75B48]/20 transition-all group"
+                  className="bg-gray-50 rounded-2xl overflow-hidden border border-gray-100 hover:shadow-lg hover:border-[#FF5C00]/20 transition-all group"
                 >
                   {/* Imagem */}
-                  <div className="relative h-40 bg-[#FFF8F5] overflow-hidden">
+                  <div className="relative h-40 bg-[#FFF7F2] overflow-hidden">
                     {product.image ? (
                       <img src={product.image} alt={product.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center">
-                        <ImageIcon size={40} className="text-[#C75B48]/40" />
+                        <ImageIcon size={40} className="text-[#FF5C00]/40" />
                       </div>
                     )}
                     <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                       <button
                         onClick={() => onEdit(product)}
-                        className="p-1.5 bg-white rounded-lg shadow text-gray-600 hover:text-[#C75B48] transition-colors"
+                        className="p-1.5 bg-white rounded-lg shadow text-gray-600 hover:text-[#FF5C00] transition-colors"
                       >
                         <Edit size={14} />
                       </button>
@@ -2092,7 +2194,7 @@ function ProductsContent({
                     <div className="flex items-start justify-between gap-2 mb-2">
                       <h3 className="font-semibold text-gray-800 truncate flex-1">{product.name}</h3>
                       <span className={`px-2 py-0.5 rounded-full text-xs font-medium flex-shrink-0 ${product.category === 'tradicional'
-                        ? 'bg-[#C75B48]/10 text-[#C75B48]'
+                        ? 'bg-[#FF5C00]/10 text-[#FF5C00]'
                         : 'bg-green-100 text-green-700'
                         }`}>
                         {product.category === 'tradicional' ? 'Tradicional' : 'Fit'}
@@ -2115,7 +2217,7 @@ function ProductsContent({
                     )}
 
                     <div className="flex items-center justify-between">
-                      <span className="text-lg font-bold text-[#C75B48]">{formatCurrency(product.price)}</span>
+                      <span className="text-lg font-bold text-[#FF5C00]">{formatCurrency(product.price)}</span>
                       <button
                         onClick={() => onToggleActive(product)}
                         className={`px-3 py-1 rounded-full text-xs font-medium transition-colors ${product.active
@@ -2163,7 +2265,7 @@ function CustomersContent({
               <button
                 onClick={() => onSubTabChange('list')}
                 className={`px-4 py-2 rounded-xl text-sm font-medium transition-colors ${subTab === 'list'
-                  ? 'bg-[#C75B48] text-white'
+                  ? 'bg-[#FF5C00] text-white'
                   : 'text-gray-500 hover:bg-gray-100'
                   }`}
               >
@@ -2172,7 +2274,7 @@ function CustomersContent({
               <button
                 onClick={() => onSubTabChange('loyalty')}
                 className={`px-4 py-2 rounded-xl text-sm font-medium transition-colors ${subTab === 'loyalty'
-                  ? 'bg-[#C75B48] text-white'
+                  ? 'bg-[#FF5C00] text-white'
                   : 'text-gray-500 hover:bg-gray-100'
                   }`}
               >
@@ -2185,25 +2287,25 @@ function CustomersContent({
                 <input
                   type="text"
                   placeholder="Buscar cliente..."
-                  className="pl-10 pr-4 py-2 border border-gray-200 rounded-xl text-sm w-64 focus:ring-2 focus:ring-[#C75B48]/20 focus:border-[#C75B48] outline-none"
+                  className="pl-10 pr-4 py-2 border border-gray-200 rounded-xl text-sm w-64 focus:ring-2 focus:ring-[#FF5C00]/20 focus:border-[#FF5C00] outline-none"
                 />
               </div>
             )}
           </div>
           <div className="grid grid-cols-3 gap-4">
             <div className="bg-gradient-to-br from-blue-50 to-blue-100 rounded-xl p-4">
-              <p className="text-2xl font-bold text-blue-600">{customers.length}</p>
-              <p className="text-sm text-blue-600">Total de Clientes</p>
+              <p className="text-2xl font-bold text-[#FF5C00]">{customers.length}</p>
+              <p className="text-sm text-[#FF5C00]">Total de Clientes</p>
             </div>
             <div className="bg-gradient-to-br from-green-50 to-green-100 rounded-xl p-4">
               <p className="text-2xl font-bold text-green-600">{formatCurrency(customers.reduce((acc, c) => acc + c.totalSpent, 0))}</p>
               <p className="text-sm text-green-600">Receita Total</p>
             </div>
             <div className="bg-gradient-to-br from-purple-50 to-purple-100 rounded-xl p-4">
-              <p className="text-2xl font-bold text-purple-600">
+              <p className="text-2xl font-bold text-[#FF5C00]">
                 {customers.length > 0 ? Math.round(customers.reduce((acc, c) => acc + c.orderCount, 0) / customers.length) : 0}
               </p>
-              <p className="text-sm text-purple-600">Média de Pedidos</p>
+              <p className="text-sm text-[#FF5C00]">Média de Pedidos</p>
             </div>
           </div>
         </div>
@@ -2212,7 +2314,7 @@ function CustomersContent({
           <div className="overflow-x-auto">
             {loadingCustomers ? (
               <div className="flex items-center justify-center py-20">
-                <Loader2 size={48} className="animate-spin text-[#C75B48]" />
+                <Loader2 size={48} className="animate-spin text-[#FF5C00]" />
               </div>
             ) : customers.length === 0 ? (
               <div className="text-center py-20">
@@ -2244,7 +2346,7 @@ function CustomersContent({
                             {customer.photo ? (
                               <img src={customer.photo} alt="" className="w-10 h-10 rounded-full" />
                             ) : (
-                              <div className="w-10 h-10 bg-[#C75B48] rounded-full flex items-center justify-center text-white font-medium text-sm">
+                              <div className="w-10 h-10 bg-[#FF5C00] rounded-full flex items-center justify-center text-white font-medium text-sm">
                                 {customer.name.charAt(0).toUpperCase()}
                               </div>
                             )}
@@ -2262,11 +2364,11 @@ function CustomersContent({
                             <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${currentTier.color} ${currentTier.bg}`}>
                               {currentTier.label}
                             </span>
-                            <span className="text-sm font-bold text-[#E8A849]">{customer.loyaltyPoints}</span>
+                            <span className="text-sm font-bold text-[#FFB800]">{customer.loyaltyPoints}</span>
                           </div>
                         </td>
                         <td className="px-6 py-4 text-right">
-                          <button className="p-2 text-gray-400 hover:text-[#C75B48] hover:bg-gray-100 rounded-lg transition-colors">
+                          <button className="p-2 text-gray-400 hover:text-[#FF5C00] hover:bg-gray-100 rounded-lg transition-colors">
                             <Eye size={18} />
                           </button>
                         </td>
@@ -2325,13 +2427,13 @@ function RatingsContent({ ratings, loadingRatings, products, onDelete }: {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
         <div className="bg-white rounded-2xl p-6 shadow-sm text-center">
           <div className="w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-4">
-            <Star size={32} fill="#E8A849" className="text-[#E8A849]" />
+            <Star size={32} fill="#FFB800" className="text-[#FFB800]" />
           </div>
           <p className="text-4xl font-bold text-gray-800 mb-1">{avgRating}</p>
           <p className="text-gray-500">Avaliação Média</p>
           <div className="flex justify-center gap-1 mt-2">
             {[1, 2, 3, 4, 5].map(i => (
-              <Star key={i} size={18} fill={i <= Math.round(Number(avgRating)) ? "#E8A849" : "none"} className={i <= Math.round(Number(avgRating)) ? "text-[#E8A849]" : "text-gray-300"} />
+              <Star key={i} size={18} fill={i <= Math.round(Number(avgRating)) ? "#FFB800" : "none"} className={i <= Math.round(Number(avgRating)) ? "text-[#FFB800]" : "text-gray-300"} />
             ))}
           </div>
         </div>
@@ -2375,7 +2477,7 @@ function RatingsContent({ ratings, loadingRatings, products, onDelete }: {
         <h4 className="font-semibold text-gray-800 mb-4">Avaliações Recentes</h4>
         {loadingRatings ? (
           <div className="flex items-center justify-center py-16">
-            <Loader2 size={32} className="animate-spin text-[#C75B48]" />
+            <Loader2 size={32} className="animate-spin text-[#FF5C00]" />
           </div>
         ) : allRatings.length === 0 ? (
           <div className="text-center py-12">
@@ -2388,7 +2490,7 @@ function RatingsContent({ ratings, loadingRatings, products, onDelete }: {
               <div key={rating.id} className="border border-gray-100 rounded-xl p-4">
                 <div className="flex items-start justify-between mb-3">
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 bg-[#C75B48] rounded-full flex items-center justify-center text-white font-medium">
+                    <div className="w-10 h-10 bg-[#FF5C00] rounded-full flex items-center justify-center text-white font-medium">
                       {rating.userName?.charAt(0) || '?'}
                     </div>
                     <div>
@@ -2402,8 +2504,8 @@ function RatingsContent({ ratings, loadingRatings, products, onDelete }: {
                         <Star
                           key={i}
                           size={14}
-                          fill={i <= rating.score ? "#E8A849" : "none"}
-                          className={i <= rating.score ? "text-[#E8A849]" : "text-gray-300"}
+                          fill={i <= rating.score ? "#FFB800" : "none"}
+                          className={i <= rating.score ? "text-[#FFB800]" : "text-gray-300"}
                         />
                       ))}
                     </div>
@@ -2485,7 +2587,7 @@ function ReportsContent({ orders, products }: { orders: Order[]; products: Produ
           <select
             value={dateRange}
             onChange={e => setDateRange(e.target.value as typeof dateRange)}
-            className="px-4 py-2 border border-gray-200 rounded-xl text-sm font-medium bg-white focus:ring-2 focus:ring-[#C75B48]/20 focus:border-[#C75B48] outline-none"
+            className="px-4 py-2 border border-gray-200 rounded-xl text-sm font-medium bg-white focus:ring-2 focus:ring-[#FF5C00]/20 focus:border-[#FF5C00] outline-none"
           >
             <option value="today">Hoje</option>
             <option value="yesterday">Ontem</option>
@@ -2498,7 +2600,7 @@ function ReportsContent({ orders, products }: { orders: Order[]; products: Produ
         </div>
         <button
           onClick={handleExportCSV}
-          className="flex items-center gap-2 px-4 py-2 bg-[#C75B48] text-white rounded-xl text-sm font-medium hover:bg-[#A84838] transition-colors"
+          className="flex items-center gap-2 px-4 py-2 bg-[#FF5C00] text-white rounded-xl text-sm font-medium hover:bg-[#E65100] transition-colors"
         >
           <Download size={16} /> Exportar CSV
         </button>
@@ -2506,7 +2608,7 @@ function ReportsContent({ orders, products }: { orders: Order[]; products: Produ
 
       {loading ? (
         <div className="flex items-center justify-center py-20">
-          <Loader2 size={48} className="animate-spin text-[#C75B48]" />
+          <Loader2 size={48} className="animate-spin text-[#FF5C00]" />
         </div>
       ) : (
         <>
@@ -2531,14 +2633,14 @@ function ReportsContent({ orders, products }: { orders: Order[]; products: Produ
             <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
               <div className="flex items-center gap-3 mb-3">
                 <div className="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
-                  <ShoppingCart size={24} className="text-blue-600" />
+                  <ShoppingCart size={24} className="text-[#FF5C00]" />
                 </div>
                 <div>
                   <p className="text-xs text-gray-500 font-medium">Total de Pedidos</p>
                   <p className="text-xl font-bold text-gray-800">{stats?.totalOrders || 0}</p>
                 </div>
               </div>
-              <div className="flex items-center gap-1 text-xs text-blue-600">
+              <div className="flex items-center gap-1 text-xs text-[#FF5C00]">
                 <CheckCircle2 size={12} />
                 <span>Pedidos pagos</span>
               </div>
@@ -2547,14 +2649,14 @@ function ReportsContent({ orders, products }: { orders: Order[]; products: Produ
             <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
               <div className="flex items-center gap-3 mb-3">
                 <div className="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center">
-                  <Tag size={24} className="text-purple-600" />
+                  <Tag size={24} className="text-[#FF5C00]" />
                 </div>
                 <div>
                   <p className="text-xs text-gray-500 font-medium">Ticket Médio</p>
                   <p className="text-xl font-bold text-gray-800">{stats ? formatCurrency(stats.avgTicket) : 'R$ 0,00'}</p>
                 </div>
               </div>
-              <div className="flex items-center gap-1 text-xs text-purple-600">
+              <div className="flex items-center gap-1 text-xs text-[#FF5C00]">
                 <BarChart3 size={12} />
                 <span>Por pedido</span>
               </div>
@@ -2582,7 +2684,7 @@ function ReportsContent({ orders, products }: { orders: Order[]; products: Produ
             <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
               <div className="flex items-center justify-between mb-6">
                 <h3 className="font-semibold text-gray-800 flex items-center gap-2">
-                  <TrendingUp size={18} className="text-[#C75B48]" />
+                  <TrendingUp size={18} className="text-[#FF5C00]" />
                   Vendas por Dia
                 </h3>
                 <span className="text-xs text-gray-500">{getDateRange(dateRange).label}</span>
@@ -2597,7 +2699,7 @@ function ReportsContent({ orders, products }: { orders: Order[]; products: Produ
                   {salesData.map((day, i) => (
                     <div key={i} className="flex-1 flex flex-col items-center gap-2">
                       <div
-                        className="w-full bg-gradient-to-t from-[#C75B48] to-[#E8A849] rounded-t-lg transition-all hover:opacity-80"
+                        className="w-full bg-gradient-to-t from-[#FF5C00] to-[#FFB800] rounded-t-lg transition-all hover:opacity-80"
                         style={{ height: `${Math.max((day.total / maxSale) * 200, day.total > 0 ? 8 : 0)}px` }}
                         title={`${formatCurrency(day.total)} - ${day.orders} pedidos`}
                       />
@@ -2614,7 +2716,7 @@ function ReportsContent({ orders, products }: { orders: Order[]; products: Produ
             <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
               <div className="flex items-center justify-between mb-6">
                 <h3 className="font-semibold text-gray-800 flex items-center gap-2">
-                  <ShoppingBag size={18} className="text-[#C75B48]" />
+                  <ShoppingBag size={18} className="text-[#FF5C00]" />
                   Produtos Mais Vendidos
                 </h3>
                 <span className="text-xs text-gray-500">Top 10</span>
@@ -2641,7 +2743,7 @@ function ReportsContent({ orders, products }: { orders: Order[]; products: Produ
                       </div>
                       <div className="w-24 h-2 bg-gray-100 rounded-full overflow-hidden">
                         <div
-                          className="h-full bg-gradient-to-r from-[#C75B48] to-[#E8A849] rounded-full"
+                          className="h-full bg-gradient-to-r from-[#FF5C00] to-[#FFB800] rounded-full"
                           style={{ width: `${Math.min((product.quantity / topProducts[0].quantity) * 100, 100)}%` }}
                         />
                       </div>
@@ -2656,7 +2758,7 @@ function ReportsContent({ orders, products }: { orders: Order[]; products: Produ
           <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100 mb-6">
             <div className="flex items-center justify-between mb-6">
               <h3 className="font-semibold text-gray-800 flex items-center gap-2">
-                <Calendar size={18} className="text-[#C75B48]" />
+                <Calendar size={18} className="text-[#FF5C00]" />
                 Receita Mensal - {new Date().getFullYear()}
               </h3>
             </div>
@@ -2678,7 +2780,7 @@ function ReportsContent({ orders, products }: { orders: Order[]; products: Produ
           <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
             <div className="flex items-center justify-between mb-6">
               <h3 className="font-semibold text-gray-800 flex items-center gap-2">
-                <List size={18} className="text-[#C75B48]" />
+                <List size={18} className="text-[#FF5C00]" />
                 Detalhamento das Vendas
               </h3>
               <span className="text-xs text-gray-500">{salesData.length} dias</span>
@@ -2705,11 +2807,11 @@ function ReportsContent({ orders, products }: { orders: Order[]; products: Produ
                         <td className="py-3 text-gray-800 font-medium">
                           {new Date(day.date).toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: '2-digit' })}
                         </td>
-                        <td className="py-3 text-right font-bold text-[#C75B48]">
+                        <td className="py-3 text-right font-bold text-[#FF5C00]">
                           {formatCurrency(day.total)}
                         </td>
                         <td className="py-3 text-center">
-                          <span className="px-2 py-1 bg-blue-50 text-blue-600 rounded-full text-xs font-medium">
+                          <span className="px-2 py-1 bg-blue-50 text-[#FF5C00] rounded-full text-xs font-medium">
                             {day.orders}
                           </span>
                         </td>
@@ -2809,7 +2911,7 @@ function RemindersContent({
           <div className="flex items-center gap-3">
             <h3 className="font-semibold text-gray-800">Lembretes</h3>
             {unreadCount > 0 && (
-              <span className="px-2 py-0.5 bg-[#C75B48] text-white text-xs font-bold rounded-full">
+              <span className="px-2 py-0.5 bg-[#FF5C00] text-white text-xs font-bold rounded-full">
                 {unreadCount} novo{unreadCount > 1 ? 's' : ''}
               </span>
             )}
@@ -2827,7 +2929,7 @@ function RemindersContent({
             )}
             <button
               onClick={() => setShowModal(true)}
-              className="px-4 py-2 bg-[#C75B48] text-white rounded-lg font-medium hover:bg-[#A84838] transition-colors flex items-center gap-2"
+              className="px-4 py-2 bg-[#FF5C00] text-white rounded-lg font-medium hover:bg-[#E65100] transition-colors flex items-center gap-2"
             >
               <Plus size={18} /> Criar Lembrete
             </button>
@@ -2840,7 +2942,7 @@ function RemindersContent({
               key={f}
               onClick={() => setFilter(f)}
               className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${filter === f
-                ? 'bg-[#C75B48] text-white'
+                ? 'bg-[#FF5C00] text-white'
                 : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                 }`}
             >
@@ -2851,7 +2953,7 @@ function RemindersContent({
 
         {loading ? (
           <div className="flex items-center justify-center py-20">
-            <Loader2 size={32} className="animate-spin text-[#C75B48]" />
+            <Loader2 size={32} className="animate-spin text-[#FF5C00]" />
           </div>
         ) : filteredReminders.length === 0 ? (
           <div className="text-center py-20 text-gray-400">
@@ -2867,7 +2969,7 @@ function RemindersContent({
               return (
                 <div
                   key={reminder.id}
-                  className={`p-4 flex items-start gap-4 hover:bg-gray-50 ${isOverdue ? 'bg-red-50' : ''} ${highlightId === reminder.id ? 'ring-2 ring-[#C75B48] ring-offset-2 bg-orange-50' : ''}`}
+                  className={`p-4 flex items-start gap-4 hover:bg-gray-50 ${isOverdue ? 'bg-red-50' : ''} ${highlightId === reminder.id ? 'ring-2 ring-[#FF5C00] ring-offset-2 bg-orange-50' : ''}`}
                   ref={highlightId === reminder.id ? (el) => el?.scrollIntoView({ behavior: 'smooth', block: 'center' }) : undefined}
                 >
                   <div className={`w-10 h-10 rounded-full flex items-center justify-center ${reminder.isCompleted
@@ -2938,7 +3040,7 @@ function RemindersContent({
                   placeholder="Ex: Verificar estoque de esfihas"
                   value={newReminder.title}
                   onChange={e => setNewReminder(prev => ({ ...prev, title: e.target.value }))}
-                  className="w-full border border-gray-200 rounded-lg p-3 focus:ring-2 focus:ring-[#C75B48]/30 focus:border-[#C75B48] outline-none"
+                  className="w-full border border-gray-200 rounded-lg p-3 focus:ring-2 focus:ring-[#FF5C00]/30 focus:border-[#FF5C00] outline-none"
                 />
               </div>
 
@@ -2948,7 +3050,7 @@ function RemindersContent({
                   placeholder="Detalhes adicionais..."
                   value={newReminder.description}
                   onChange={e => setNewReminder(prev => ({ ...prev, description: e.target.value }))}
-                  className="w-full border border-gray-200 rounded-lg p-3 focus:ring-2 focus:ring-[#C75B48]/30 focus:border-[#C75B48] outline-none resize-none"
+                  className="w-full border border-gray-200 rounded-lg p-3 focus:ring-2 focus:ring-[#FF5C00]/30 focus:border-[#FF5C00] outline-none resize-none"
                   rows={3}
                 />
               </div>
@@ -2959,7 +3061,7 @@ function RemindersContent({
                   type="datetime-local"
                   value={newReminder.reminderDate}
                   onChange={e => setNewReminder(prev => ({ ...prev, reminderDate: e.target.value }))}
-                  className="w-full border border-gray-200 rounded-lg p-3 focus:ring-2 focus:ring-[#C75B48]/30 focus:border-[#C75B48] outline-none"
+                  className="w-full border border-gray-200 rounded-lg p-3 focus:ring-2 focus:ring-[#FF5C00]/30 focus:border-[#FF5C00] outline-none"
                 />
               </div>
             </div>
@@ -2974,7 +3076,7 @@ function RemindersContent({
               <button
                 onClick={handleSave}
                 disabled={saving}
-                className="flex-1 py-3 bg-[#C75B48] text-white rounded-lg font-medium hover:bg-[#A84838] disabled:opacity-50 flex items-center justify-center gap-2"
+                className="flex-1 py-3 bg-[#FF5C00] text-white rounded-lg font-medium hover:bg-[#E65100] disabled:opacity-50 flex items-center justify-center gap-2"
               >
                 {saving ? <Loader2 size={18} className="animate-spin" /> : null}
                 Salvar Lembrete
@@ -3054,7 +3156,7 @@ function FinanceContent() {
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
-        <Loader2 size={48} className="animate-spin text-[#C75B48]" />
+        <Loader2 size={48} className="animate-spin text-[#FF5C00]" />
       </div>
     );
   }
@@ -3066,7 +3168,7 @@ function FinanceContent() {
         <button
           onClick={() => setActiveTab('summary')}
           className={`px-4 py-2 rounded-xl font-medium transition-colors ${activeTab === 'summary'
-            ? 'bg-[#C75B48] text-white'
+            ? 'bg-[#FF5C00] text-white'
             : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'
             }`}
         >
@@ -3075,7 +3177,7 @@ function FinanceContent() {
         <button
           onClick={() => setActiveTab('receivables')}
           className={`px-4 py-2 rounded-xl font-medium transition-colors ${activeTab === 'receivables'
-            ? 'bg-[#C75B48] text-white'
+            ? 'bg-[#FF5C00] text-white'
             : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'
             }`}
         >
@@ -3084,7 +3186,7 @@ function FinanceContent() {
         <button
           onClick={() => setActiveTab('payables')}
           className={`px-4 py-2 rounded-xl font-medium transition-colors ${activeTab === 'payables'
-            ? 'bg-[#C75B48] text-white'
+            ? 'bg-[#FF5C00] text-white'
             : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'
             }`}
         >
@@ -3176,7 +3278,7 @@ function FinanceContent() {
                         <td className="py-3 text-gray-600">#{rec.orderNumber}</td>
                         <td className="py-3 text-gray-800 font-medium">{rec.customerName}</td>
                         <td className="py-3 text-gray-600">{new Date(rec.dueDate).toLocaleDateString('pt-BR')}</td>
-                        <td className="py-3 text-right font-bold text-[#C75B48]">{formatCurrency(rec.amount)}</td>
+                        <td className="py-3 text-right font-bold text-[#FF5C00]">{formatCurrency(rec.amount)}</td>
                         <td className="py-3 text-center">
                           <span className={`px-2 py-1 rounded-full text-xs font-medium ${rec.status === 'paid' ? 'bg-green-100 text-green-700' :
                             rec.status === 'overdue' ? 'bg-red-100 text-red-700' :
@@ -3212,7 +3314,7 @@ function FinanceContent() {
             <h3 className="font-semibold text-gray-800">Contas a Receber</h3>
             <button
               onClick={() => setShowAddReceivable(true)}
-              className="flex items-center gap-2 bg-[#C75B48] text-white px-4 py-2 rounded-xl text-sm font-medium hover:bg-[#A84838]"
+              className="flex items-center gap-2 bg-[#FF5C00] text-white px-4 py-2 rounded-xl text-sm font-medium hover:bg-[#E65100]"
             >
               <Plus size={18} /> Nova Conta
             </button>
@@ -3235,7 +3337,7 @@ function FinanceContent() {
                     <td className="px-6 py-4 text-gray-600">#{rec.orderNumber}</td>
                     <td className="px-6 py-4 text-gray-800 font-medium">{rec.customerName}</td>
                     <td className="px-6 py-4 text-gray-600">{new Date(rec.dueDate).toLocaleDateString('pt-BR')}</td>
-                    <td className="px-6 py-4 text-right font-bold text-[#C75B48]">{formatCurrency(rec.amount)}</td>
+                    <td className="px-6 py-4 text-right font-bold text-[#FF5C00]">{formatCurrency(rec.amount)}</td>
                     <td className="px-6 py-4 text-center">
                       <span className={`px-2 py-1 rounded-full text-xs font-medium ${rec.status === 'paid' ? 'bg-green-100 text-green-700' :
                         rec.status === 'overdue' ? 'bg-red-100 text-red-700' :
@@ -3269,7 +3371,7 @@ function FinanceContent() {
             <h3 className="font-semibold text-gray-800">Contas a Pagar</h3>
             <button
               onClick={() => setShowAddPayable(true)}
-              className="flex items-center gap-2 bg-[#C75B48] text-white px-4 py-2 rounded-xl text-sm font-medium hover:bg-[#A84838]"
+              className="flex items-center gap-2 bg-[#FF5C00] text-white px-4 py-2 rounded-xl text-sm font-medium hover:bg-[#E65100]"
             >
               <Plus size={18} /> Nova Conta
             </button>
@@ -3296,7 +3398,7 @@ function FinanceContent() {
                       </span>
                     </td>
                     <td className="px-6 py-4 text-gray-600">{new Date(pay.dueDate).toLocaleDateString('pt-BR')}</td>
-                    <td className="px-6 py-4 text-right font-bold text-[#C75B48]">{formatCurrency(pay.amount)}</td>
+                    <td className="px-6 py-4 text-right font-bold text-[#FF5C00]">{formatCurrency(pay.amount)}</td>
                     <td className="px-6 py-4 text-center">
                       <span className={`px-2 py-1 rounded-full text-xs font-medium ${pay.status === 'paid' ? 'bg-green-100 text-green-700' :
                         pay.status === 'overdue' ? 'bg-red-100 text-red-700' :
@@ -3418,7 +3520,7 @@ function AddReceivableModal({
                 value={orderNumber}
                 onChange={e => setOrderNumber(e.target.value)}
                 placeholder="123"
-                className="w-full border border-gray-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-[#C75B48]/20 focus:border-[#C75B48] outline-none"
+                className="w-full border border-gray-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-[#FF5C00]/20 focus:border-[#FF5C00] outline-none"
                 required
               />
             </div>
@@ -3430,7 +3532,7 @@ function AddReceivableModal({
                 value={orderId}
                 onChange={e => setOrderId(e.target.value)}
                 placeholder="opcional"
-                className="w-full border border-gray-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-[#C75B48]/20 focus:border-[#C75B48] outline-none"
+                className="w-full border border-gray-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-[#FF5C00]/20 focus:border-[#FF5C00] outline-none"
               />
             </div>
 
@@ -3441,7 +3543,7 @@ function AddReceivableModal({
                 value={customerName}
                 onChange={e => setCustomerName(e.target.value)}
                 placeholder="João da Silva"
-                className="w-full border border-gray-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-[#C75B48]/20 focus:border-[#C75B48] outline-none"
+                className="w-full border border-gray-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-[#FF5C00]/20 focus:border-[#FF5C00] outline-none"
                 required
               />
             </div>
@@ -3453,7 +3555,7 @@ function AddReceivableModal({
                 value={customerEmail}
                 onChange={e => setCustomerEmail(e.target.value)}
                 placeholder="joao@email.com"
-                className="w-full border border-gray-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-[#C75B48]/20 focus:border-[#C75B48] outline-none"
+                className="w-full border border-gray-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-[#FF5C00]/20 focus:border-[#FF5C00] outline-none"
               />
             </div>
 
@@ -3465,7 +3567,7 @@ function AddReceivableModal({
                 value={amount}
                 onChange={e => setAmount(e.target.value)}
                 placeholder="0.00"
-                className="w-full border border-gray-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-[#C75B48]/20 focus:border-[#C75B48] outline-none"
+                className="w-full border border-gray-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-[#FF5C00]/20 focus:border-[#FF5C00] outline-none"
                 required
               />
             </div>
@@ -3476,7 +3578,7 @@ function AddReceivableModal({
                 type="date"
                 value={dueDate}
                 onChange={e => setDueDate(e.target.value)}
-                className="w-full border border-gray-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-[#C75B48]/20 focus:border-[#C75B48] outline-none"
+                className="w-full border border-gray-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-[#FF5C00]/20 focus:border-[#FF5C00] outline-none"
                 required
               />
             </div>
@@ -3486,7 +3588,7 @@ function AddReceivableModal({
               <select
                 value={paymentMethod}
                 onChange={e => setPaymentMethod(e.target.value as any)}
-                className="w-full border border-gray-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-[#C75B48]/20 focus:border-[#C75B48] outline-none bg-white"
+                className="w-full border border-gray-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-[#FF5C00]/20 focus:border-[#FF5C00] outline-none bg-white"
               >
                 <option value="pix">PIX</option>
                 <option value="dinheiro">Dinheiro</option>
@@ -3503,7 +3605,7 @@ function AddReceivableModal({
                 onChange={e => setDescription(e.target.value)}
                 placeholder="Observações sobre esta conta..."
                 rows={3}
-                className="w-full border border-gray-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-[#C75B48]/20 focus:border-[#C75B48] outline-none resize-none"
+                className="w-full border border-gray-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-[#FF5C00]/20 focus:border-[#FF5C00] outline-none resize-none"
               />
             </div>
           </div>
@@ -3519,7 +3621,7 @@ function AddReceivableModal({
             <button
               type="submit"
               disabled={saving}
-              className="flex-1 py-3 bg-[#C75B48] text-white rounded-xl font-medium hover:bg-[#A84838] disabled:opacity-50 flex items-center justify-center gap-2"
+              className="flex-1 py-3 bg-[#FF5C00] text-white rounded-xl font-medium hover:bg-[#E65100] disabled:opacity-50 flex items-center justify-center gap-2"
             >
               {saving ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
               {saving ? 'Salvando...' : 'Salvar'}
@@ -3585,7 +3687,7 @@ function AddPayableModal({
                 value={description}
                 onChange={e => setDescription(e.target.value)}
                 placeholder="Ex: Compra de farinha - Fornecedor Silva"
-                className="w-full border border-gray-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-[#C75B48]/20 focus:border-[#C75B48] outline-none"
+                className="w-full border border-gray-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-[#FF5C00]/20 focus:border-[#FF5C00] outline-none"
                 required
               />
             </div>
@@ -3595,7 +3697,7 @@ function AddPayableModal({
               <select
                 value={category}
                 onChange={e => setCategory(e.target.value as any)}
-                className="w-full border border-gray-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-[#C75B48]/20 focus:border-[#C75B48] outline-none bg-white"
+                className="w-full border border-gray-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-[#FF5C00]/20 focus:border-[#FF5C00] outline-none bg-white"
               >
                 <option value="ingredientes">Ingredientes</option>
                 <option value="embalagem">Embalagem</option>
@@ -3613,7 +3715,7 @@ function AddPayableModal({
                 value={supplier}
                 onChange={e => setSupplier(e.target.value)}
                 placeholder="Ex: Distribuidora Silva"
-                className="w-full border border-gray-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-[#C75B48]/20 focus:border-[#C75B48] outline-none"
+                className="w-full border border-gray-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-[#FF5C00]/20 focus:border-[#FF5C00] outline-none"
               />
             </div>
 
@@ -3625,7 +3727,7 @@ function AddPayableModal({
                 value={amount}
                 onChange={e => setAmount(e.target.value)}
                 placeholder="0.00"
-                className="w-full border border-gray-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-[#C75B48]/20 focus:border-[#C75B48] outline-none"
+                className="w-full border border-gray-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-[#FF5C00]/20 focus:border-[#FF5C00] outline-none"
                 required
               />
             </div>
@@ -3636,7 +3738,7 @@ function AddPayableModal({
                 type="date"
                 value={dueDate}
                 onChange={e => setDueDate(e.target.value)}
-                className="w-full border border-gray-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-[#C75B48]/20 focus:border-[#C75B48] outline-none"
+                className="w-full border border-gray-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-[#FF5C00]/20 focus:border-[#FF5C00] outline-none"
                 required
               />
             </div>
@@ -3648,7 +3750,7 @@ function AddPayableModal({
                 onChange={e => setNotes(e.target.value)}
                 placeholder="Observações sobre esta conta..."
                 rows={3}
-                className="w-full border border-gray-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-[#C75B48]/20 focus:border-[#C75B48] outline-none resize-none"
+                className="w-full border border-gray-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-[#FF5C00]/20 focus:border-[#FF5C00] outline-none resize-none"
               />
             </div>
           </div>
@@ -3664,7 +3766,7 @@ function AddPayableModal({
             <button
               type="submit"
               disabled={saving}
-              className="flex-1 py-3 bg-[#C75B48] text-white rounded-xl font-medium hover:bg-[#A84838] disabled:opacity-50 flex items-center justify-center gap-2"
+              className="flex-1 py-3 bg-[#FF5C00] text-white rounded-xl font-medium hover:bg-[#E65100] disabled:opacity-50 flex items-center justify-center gap-2"
             >
               {saving ? <Loader2 size={18} className="animate-spin" /> : <Save size={18} />}
               {saving ? 'Salvando...' : 'Salvar'}
@@ -3775,7 +3877,7 @@ function SettingsContent({ user }: { user: FirebaseUser }) {
                 <input
                   type="text"
                   defaultValue="Campanini Sabores"
-                  className="w-full border border-gray-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-[#C75B48]/20 focus:border-[#C75B48] outline-none"
+                  className="w-full border border-gray-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-[#FF5C00]/20 focus:border-[#FF5C00] outline-none"
                 />
               </div>
               <div>
@@ -3783,7 +3885,7 @@ function SettingsContent({ user }: { user: FirebaseUser }) {
                 <input
                   type="text"
                   defaultValue="+55 11 99193-8761"
-                  className="w-full border border-gray-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-[#C75B48]/20 focus:border-[#C75B48] outline-none"
+                  className="w-full border border-gray-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-[#FF5C00]/20 focus:border-[#FF5C00] outline-none"
                 />
               </div>
               <div>
@@ -3791,7 +3893,7 @@ function SettingsContent({ user }: { user: FirebaseUser }) {
                 <input
                   type="text"
                   defaultValue="Seg - Sáb: 8h às 18h"
-                  className="w-full border border-gray-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-[#C75B48]/20 focus:border-[#C75B48] outline-none"
+                  className="w-full border border-gray-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-[#FF5C00]/20 focus:border-[#FF5C00] outline-none"
                 />
               </div>
             </div>
@@ -3803,7 +3905,7 @@ function SettingsContent({ user }: { user: FirebaseUser }) {
               <h3 className="font-semibold text-gray-800">Administradores</h3>
               <button
                 onClick={() => setShowAddModal(true)}
-                className="flex items-center gap-2 bg-[#C75B48] text-white px-4 py-2 rounded-xl text-sm font-medium hover:bg-[#A84838] transition-colors"
+                className="flex items-center gap-2 bg-[#FF5C00] text-white px-4 py-2 rounded-xl text-sm font-medium hover:bg-[#E65100] transition-colors"
               >
                 <Plus size={18} /> Adicionar Admin
               </button>
@@ -3824,7 +3926,7 @@ function SettingsContent({ user }: { user: FirebaseUser }) {
 
             {loadingAdmins ? (
               <div className="flex items-center justify-center py-12">
-                <Loader2 size={32} className="animate-spin text-[#C75B48]" />
+                <Loader2 size={32} className="animate-spin text-[#FF5C00]" />
               </div>
             ) : admins.length === 0 ? (
               <div className="text-center py-12 text-gray-400">
@@ -3839,8 +3941,8 @@ function SettingsContent({ user }: { user: FirebaseUser }) {
                     className="flex items-center justify-between p-4 bg-gray-50 rounded-xl border border-gray-100"
                   >
                     <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 bg-[#C75B48]/10 rounded-full flex items-center justify-center">
-                        <User size={20} className="text-[#C75B48]" />
+                      <div className="w-10 h-10 bg-[#FF5C00]/10 rounded-full flex items-center justify-center">
+                        <User size={20} className="text-[#FF5C00]" />
                       </div>
                       <div>
                         <p className="font-medium text-gray-800">{admin.email}</p>
@@ -3900,7 +4002,7 @@ function SettingsContent({ user }: { user: FirebaseUser }) {
               <div className="flex items-center justify-between p-4 bg-gray-50 rounded-xl">
                 <div className="flex items-center gap-3">
                   <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
-                    <Bell size={20} className="text-blue-600" />
+                    <Bell size={20} className="text-[#FF5C00]" />
                   </div>
                   <div>
                     <p className="font-medium text-gray-800">Notificações</p>
@@ -3928,7 +4030,7 @@ function SettingsContent({ user }: { user: FirebaseUser }) {
                     <p className="text-xs text-green-600">Conectado</p>
                   </div>
                 </div>
-                <button className="text-sm text-[#C75B48] hover:underline">Gerenciar</button>
+                <button className="text-sm text-[#FF5C00] hover:underline">Gerenciar</button>
               </div>
             </div>
           </div>
@@ -3979,7 +4081,7 @@ function SettingsContent({ user }: { user: FirebaseUser }) {
                   value={newAdminEmail}
                   onChange={e => setNewAdminEmail(e.target.value)}
                   placeholder="exemplo@email.com"
-                  className="w-full border border-gray-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-[#C75B48]/20 focus:border-[#C75B48] outline-none"
+                  className="w-full border border-gray-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-[#FF5C00]/20 focus:border-[#FF5C00] outline-none"
                   autoFocus
                 />
               </div>
@@ -4005,7 +4107,7 @@ function SettingsContent({ user }: { user: FirebaseUser }) {
               <button
                 onClick={handleAddAdmin}
                 disabled={saving || !newAdminEmail.trim()}
-                className="flex-1 py-3 bg-[#C75B48] text-white rounded-xl font-medium hover:bg-[#A84838] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
+                className="flex-1 py-3 bg-[#FF5C00] text-white rounded-xl font-medium hover:bg-[#E65100] disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
               >
                 {saving ? <Loader2 size={18} className="animate-spin" /> : <Check size={18} />}
                 {saving ? 'Adicionando...' : 'Adicionar'}
@@ -4097,7 +4199,7 @@ function ProductModal({
       category,
       tags,
       active: product?.active ?? true,
-      image
+      image: image || ''
     }, imageFile || undefined);
   };
 
@@ -4125,7 +4227,7 @@ function ProductModal({
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">Foto do Produto</label>
             <div
-              className="border-2 border-dashed border-gray-200 rounded-2xl p-6 text-center cursor-pointer hover:border-[#C75B48] transition-colors"
+              className="border-2 border-dashed border-gray-200 rounded-2xl p-6 text-center cursor-pointer hover:border-[#FF5C00] transition-colors"
               onClick={() => fileInputRef.current?.click()}
             >
               {image ? (
@@ -4171,14 +4273,14 @@ function ProductModal({
 
             {/* Barra de progresso do upload */}
             {uploading && uploadProgress && (
-              <div className="mt-3 p-3 bg-[#C75B48]/5 border border-[#C75B48]/20 rounded-xl">
+              <div className="mt-3 p-3 bg-[#FF5C00]/5 border border-[#FF5C00]/20 rounded-xl">
                 <div className="flex items-center justify-between mb-2">
-                  <p className="text-sm font-medium text-[#C75B48]">Enviando imagem...</p>
-                  <p className="text-xs font-bold text-[#C75B48]">{uploadProgress.percentage}%</p>
+                  <p className="text-sm font-medium text-[#FF5C00]">Enviando imagem...</p>
+                  <p className="text-xs font-bold text-[#FF5C00]">{uploadProgress.percentage}%</p>
                 </div>
                 <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
                   <div
-                    className="h-full bg-gradient-to-r from-[#C75B48] to-[#E8A849] rounded-full transition-all"
+                    className="h-full bg-gradient-to-r from-[#FF5C00] to-[#FFB800] rounded-full transition-all"
                     style={{ width: `${uploadProgress.percentage}%` }}
                   />
                 </div>
@@ -4210,7 +4312,7 @@ function ProductModal({
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="Ex: Esfiha de Carne Clássica"
-              className="w-full border border-gray-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-[#C75B48]/20 focus:border-[#C75B48] outline-none transition-all"
+              className="w-full border border-gray-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-[#FF5C00]/20 focus:border-[#FF5C00] outline-none transition-all"
             />
           </div>
 
@@ -4221,7 +4323,7 @@ function ProductModal({
               onChange={(e) => setDescription(e.target.value)}
               placeholder="Descreva o produto..."
               rows={3}
-              className="w-full border border-gray-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-[#C75B48]/20 focus:border-[#C75B48] outline-none transition-all resize-none"
+              className="w-full border border-gray-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-[#FF5C00]/20 focus:border-[#FF5C00] outline-none transition-all resize-none"
             />
           </div>
 
@@ -4233,7 +4335,7 @@ function ProductModal({
                 value={price}
                 onChange={(e) => setPrice(e.target.value)}
                 placeholder="30.00"
-                className="w-full border border-gray-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-[#C75B48]/20 focus:border-[#C75B48] outline-none transition-all"
+                className="w-full border border-gray-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-[#FF5C00]/20 focus:border-[#FF5C00] outline-none transition-all"
               />
             </div>
             <div>
@@ -4241,7 +4343,7 @@ function ProductModal({
               <select
                 value={category}
                 onChange={(e) => setCategory(e.target.value as 'tradicional' | 'fit')}
-                className="w-full border border-gray-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-[#C75B48]/20 focus:border-[#C75B48] outline-none transition-all bg-white"
+                className="w-full border border-gray-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-[#FF5C00]/20 focus:border-[#FF5C00] outline-none transition-all bg-white"
               >
                 <option value="tradicional">Linha Tradicional</option>
                 <option value="fit">Linha Fit</option>
@@ -4255,7 +4357,7 @@ function ProductModal({
               {tags.map((tag, i) => (
                 <span
                   key={i}
-                  className="px-3 py-1 bg-[#FFF8F5] text-[#C75B48] rounded-full text-sm flex items-center gap-1"
+                  className="px-3 py-1 bg-[#FFF7F2] text-[#FF5C00] rounded-full text-sm flex items-center gap-1"
                 >
                   {tag}
                   <button
@@ -4275,7 +4377,7 @@ function ProductModal({
                 onChange={(e) => setNewTag(e.target.value)}
                 onKeyPress={(e) => e.key === 'Enter' && (e.preventDefault(), handleAddTag())}
                 placeholder="Adicionar tag (ex: Clássica, Leve)"
-                className="flex-1 border border-gray-200 rounded-xl px-4 py-2 text-sm focus:ring-2 focus:ring-[#C75B48]/20 focus:border-[#C75B48] outline-none transition-all"
+                className="flex-1 border border-gray-200 rounded-xl px-4 py-2 text-sm focus:ring-2 focus:ring-[#FF5C00]/20 focus:border-[#FF5C00] outline-none transition-all"
               />
               <button
                 type="button"
@@ -4299,7 +4401,7 @@ function ProductModal({
             <button
               type="submit"
               disabled={uploading}
-              className="flex-1 py-3 px-4 bg-[#C75B48] text-white rounded-xl font-medium hover:bg-[#A84838] transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+              className="flex-1 py-3 px-4 bg-[#FF5C00] text-white rounded-xl font-medium hover:bg-[#E65100] transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
             >
               {uploading ? (
                 <>
@@ -4404,7 +4506,7 @@ function CouponModal({
               onChange={e => setCode(e.target.value.toUpperCase())}
               disabled={!!coupon}
               placeholder="Ex: PRIMEIRA10"
-              className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm font-mono uppercase focus:ring-2 focus:ring-[#C75B48]/20 focus:border-[#C75B48] outline-none transition-all disabled:bg-gray-50 disabled:text-gray-400"
+              className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm font-mono uppercase focus:ring-2 focus:ring-[#FF5C00]/20 focus:border-[#FF5C00] outline-none transition-all disabled:bg-gray-50 disabled:text-gray-400"
             />
           </div>
 
@@ -4415,14 +4517,14 @@ function CouponModal({
                 <button
                   type="button"
                   onClick={() => setType('percentage')}
-                  className={`flex-1 py-2.5 text-sm font-medium transition-colors ${type === 'percentage' ? 'bg-[#C75B48] text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}
+                  className={`flex-1 py-2.5 text-sm font-medium transition-colors ${type === 'percentage' ? 'bg-[#FF5C00] text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}
                 >
                   %
                 </button>
                 <button
                   type="button"
                   onClick={() => setType('fixed')}
-                  className={`flex-1 py-2.5 text-sm font-medium transition-colors ${type === 'fixed' ? 'bg-[#C75B48] text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}
+                  className={`flex-1 py-2.5 text-sm font-medium transition-colors ${type === 'fixed' ? 'bg-[#FF5C00] text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}
                 >
                   R$ Fixo
                 </button>
@@ -4437,7 +4539,7 @@ function CouponModal({
                 min="0"
                 step={type === 'percentage' ? '1' : '0.01'}
                 placeholder={type === 'percentage' ? '10' : '5,00'}
-                className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-[#C75B48]/20 focus:border-[#C75B48] outline-none transition-all"
+                className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-[#FF5C00]/20 focus:border-[#FF5C00] outline-none transition-all"
               />
             </div>
           </div>
@@ -4452,7 +4554,7 @@ function CouponModal({
                 min="0"
                 step="0.01"
                 placeholder="Ex: 20,00"
-                className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-[#C75B48]/20 focus:border-[#C75B48] outline-none transition-all"
+                className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-[#FF5C00]/20 focus:border-[#FF5C00] outline-none transition-all"
               />
               <p className="text-xs text-gray-400 mt-1">Limita o valor máximo de desconto quando usa %</p>
             </div>
@@ -4467,7 +4569,7 @@ function CouponModal({
               min="0"
               step="0.01"
               placeholder="Ex: 50,00"
-              className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-[#C75B48]/20 focus:border-[#C75B48] outline-none transition-all"
+              className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-[#FF5C00]/20 focus:border-[#FF5C00] outline-none transition-all"
             />
           </div>
 
@@ -4477,7 +4579,7 @@ function CouponModal({
               <select
                 value={maxUses}
                 onChange={e => setMaxUses(e.target.value)}
-                className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-[#C75B48]/20 focus:border-[#C75B48] outline-none transition-all bg-white"
+                className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-[#FF5C00]/20 focus:border-[#FF5C00] outline-none transition-all bg-white"
               >
                 <option value="">Ilimitado</option>
                 <option value="10">10 usos</option>
@@ -4492,7 +4594,7 @@ function CouponModal({
               <select
                 value={perCustomerLimit}
                 onChange={e => setPerCustomerLimit(e.target.value)}
-                className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-[#C75B48]/20 focus:border-[#C75B48] outline-none transition-all bg-white"
+                className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-[#FF5C00]/20 focus:border-[#FF5C00] outline-none transition-all bg-white"
               >
                 <option value="1">1x por cliente</option>
                 <option value="2">2x por cliente</option>
@@ -4508,7 +4610,7 @@ function CouponModal({
               type="date"
               value={expiresAt}
               onChange={e => setExpiresAt(e.target.value)}
-              className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-[#C75B48]/20 focus:border-[#C75B48] outline-none transition-all"
+              className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-[#FF5C00]/20 focus:border-[#FF5C00] outline-none transition-all"
             />
           </div>
 
@@ -4534,7 +4636,7 @@ function CouponModal({
             <button
               type="submit"
               disabled={loading}
-              className="flex-1 py-3 bg-[#C75B48] text-white rounded-xl font-medium hover:bg-[#A84838] transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+              className="flex-1 py-3 bg-[#FF5C00] text-white rounded-xl font-medium hover:bg-[#E65100] transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
             >
               {loading ? <Loader2 size={18} className="animate-spin" /> : <Check size={18} />}
               {coupon ? 'Salvar Alterações' : 'Criar Cupom'}
@@ -4583,7 +4685,7 @@ function CouponsContent({
       <div className="grid grid-cols-4 gap-4 mb-6">
         <div className="bg-white rounded-2xl p-4 shadow-sm">
           <p className="text-sm text-gray-500 mb-1">Cupons Ativos</p>
-          <p className="text-2xl font-bold text-[#C75B48]">{activeCoupons.length}</p>
+          <p className="text-2xl font-bold text-[#FF5C00]">{activeCoupons.length}</p>
         </div>
         <div className="bg-white rounded-2xl p-4 shadow-sm">
           <p className="text-sm text-gray-500 mb-1">Total de Usos</p>
@@ -4610,7 +4712,7 @@ function CouponsContent({
               <button
                 key={f}
                 onClick={() => setFilter(f)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${filter === f ? 'bg-[#C75B48] text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${filter === f ? 'bg-[#FF5C00] text-white' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                   }`}
               >
                 {f === 'all' ? 'Todos' : f === 'active' ? 'Ativos' : 'Inativos'}
@@ -4618,7 +4720,7 @@ function CouponsContent({
             ))}
             <button
               onClick={onAddNew}
-              className="flex items-center gap-1.5 px-4 py-1.5 bg-[#C75B48] text-white text-xs font-medium rounded-lg hover:bg-[#A84838] transition-colors"
+              className="flex items-center gap-1.5 px-4 py-1.5 bg-[#FF5C00] text-white text-xs font-medium rounded-lg hover:bg-[#E65100] transition-colors"
             >
               <Plus size={14} />
               Novo Cupom
@@ -4628,13 +4730,13 @@ function CouponsContent({
 
         {loadingCoupons ? (
           <div className="flex items-center justify-center py-20">
-            <Loader2 size={48} className="animate-spin text-[#C75B48]" />
+            <Loader2 size={48} className="animate-spin text-[#FF5C00]" />
           </div>
         ) : filtered.length === 0 ? (
           <div className="text-center py-20">
             <Ticket size={64} className="mx-auto text-gray-200 mb-4" />
             <p className="text-gray-500">Nenhum cupom {filter === 'active' ? 'ativo' : filter === 'inactive' ? 'inativo' : ''}</p>
-            <button onClick={onAddNew} className="mt-4 text-[#C75B48] hover:underline font-medium">
+            <button onClick={onAddNew} className="mt-4 text-[#FF5C00] hover:underline font-medium">
               Criar primeiro cupom
             </button>
           </div>
@@ -4682,7 +4784,7 @@ function CouponsContent({
                   <div className="flex items-center gap-1">
                     <button
                       onClick={() => onViewReport(coupon)}
-                      className="p-2 text-gray-400 hover:text-[#C75B48] hover:bg-gray-100 rounded-lg transition-colors"
+                      className="p-2 text-gray-400 hover:text-[#FF5C00] hover:bg-gray-100 rounded-lg transition-colors"
                       title="Ver relatório"
                     >
                       <BarChart3 size={16} />
@@ -4699,7 +4801,7 @@ function CouponsContent({
                     </button>
                     <button
                       onClick={() => onEdit(coupon)}
-                      className="p-2 text-gray-400 hover:text-[#C75B48] hover:bg-gray-100 rounded-lg transition-colors"
+                      className="p-2 text-gray-400 hover:text-[#FF5C00] hover:bg-gray-100 rounded-lg transition-colors"
                       title="Editar"
                     >
                       <Edit size={16} />
@@ -4742,9 +4844,9 @@ function LoyaltyContent({ customers }: { customers: Customer[] }) {
   return (
     <div className="p-6">
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-        <div className="bg-gradient-to-br from-[#FFF8F5] to-[#FFF3E0] rounded-2xl p-5 border border-[#E8A849]/20">
+        <div className="bg-gradient-to-br from-[#FFF7F2] to-[#FFF3E0] rounded-2xl p-5 border border-[#FFB800]/20">
           <p className="text-sm text-[#8C7066] mb-1">Pontos em Circulação</p>
-          <p className="text-2xl font-bold text-[#E8A849]">{stats.totalPointsActive.toLocaleString()}</p>
+          <p className="text-2xl font-bold text-[#FFB800]">{stats.totalPointsActive.toLocaleString()}</p>
           <p className="text-xs text-[#8C7066] mt-1">{stats.customersWithPoints} clientes com pontos</p>
         </div>
         <div className="bg-gradient-to-br from-[#F1F8E9] to-[#E8F5E9] rounded-2xl p-5 border border-[#C8E6C9]">
@@ -4759,13 +4861,13 @@ function LoyaltyContent({ customers }: { customers: Customer[] }) {
           </p>
         </div>
         <div className="bg-gradient-to-br from-blue-50 to-indigo-50 rounded-2xl p-5 border border-blue-100">
-          <p className="text-sm text-blue-600 mb-1">Clientes Ativos</p>
-          <p className="text-2xl font-bold text-blue-600">{stats.customersWithPoints}</p>
+          <p className="text-sm text-[#FF5C00] mb-1">Clientes Ativos</p>
+          <p className="text-2xl font-bold text-[#FF5C00]">{stats.customersWithPoints}</p>
           <p className="text-xs text-blue-500 mt-1">com pontos acumulados</p>
         </div>
         <div className="bg-gradient-to-br from-purple-50 to-pink-50 rounded-2xl p-5 border border-purple-100">
-          <p className="text-sm text-purple-600 mb-1">Total de Pedidos</p>
-          <p className="text-2xl font-bold text-purple-600">{stats.totalOrders}</p>
+          <p className="text-sm text-[#FF5C00] mb-1">Total de Pedidos</p>
+          <p className="text-2xl font-bold text-[#FF5C00]">{stats.totalOrders}</p>
           <p className="text-xs text-purple-500 mt-1">média {stats.avgOrdersPerCustomer} por cliente</p>
         </div>
       </div>
@@ -4789,7 +4891,7 @@ function LoyaltyContent({ customers }: { customers: Customer[] }) {
                     <div className="text-2xl font-bold text-gray-300 w-8 text-center">
                       {index === 0 ? '🥇' : index === 1 ? '🥈' : index === 2 ? '🥉' : `#${index + 1}`}
                     </div>
-                    <div className="w-10 h-10 rounded-full bg-[#FFF8F5] flex items-center justify-center text-[#C75B48] font-bold text-sm">
+                    <div className="w-10 h-10 rounded-full bg-[#FFF7F2] flex items-center justify-center text-[#FF5C00] font-bold text-sm">
                       {customer.name.charAt(0).toUpperCase()}
                     </div>
                     <div className="flex-1 min-w-0">
@@ -4803,12 +4905,12 @@ function LoyaltyContent({ customers }: { customers: Customer[] }) {
                         <span>{customer.orderCount} pedidos</span>
                         <span>{formatCurrency(customer.totalSpent)} gastos</span>
                         {nextTier && (
-                          <span className="text-[#C75B48]">+{customer.pointsToNextTier} pts para {nextTier.label}</span>
+                          <span className="text-[#FF5C00]">+{customer.pointsToNextTier} pts para {nextTier.label}</span>
                         )}
                       </div>
                     </div>
                     <div className="text-right">
-                      <p className="text-xl font-bold text-[#E8A849]">{customer.loyaltyPoints}</p>
+                      <p className="text-xl font-bold text-[#FFB800]">{customer.loyaltyPoints}</p>
                       <p className="text-xs text-gray-400">pontos</p>
                     </div>
                   </div>
@@ -4850,7 +4952,7 @@ function LoyaltyContent({ customers }: { customers: Customer[] }) {
               });
               if (nearCustomers.length === 0) return null;
               return (
-                <div key={tier.label} className="bg-[#FFF8F5] border border-[#E8A849]/20 rounded-xl p-3">
+                <div key={tier.label} className="bg-[#FFF7F2] border border-[#FFB800]/20 rounded-xl p-3">
                   <p className="text-sm font-medium text-[#3D2A24]">
                     {nearCustomers.length} cliente{nearCustomers.length > 1 ? 's' : ''} faltando até {tier.label}
                   </p>
@@ -4858,7 +4960,7 @@ function LoyaltyContent({ customers }: { customers: Customer[] }) {
                     {nearCustomers.slice(0, 3).map(c => (
                       <div key={c.id} className="flex items-center justify-between text-xs">
                         <span className="text-gray-600 truncate">{c.name || c.email}</span>
-                        <span className="text-[#C75B48] font-bold flex-shrink-0 ml-2">
+                        <span className="text-[#FF5C00] font-bold flex-shrink-0 ml-2">
                           {c.loyaltyPoints} pts
                         </span>
                       </div>
@@ -4871,7 +4973,7 @@ function LoyaltyContent({ customers }: { customers: Customer[] }) {
         </div>
       </div>
 
-      <div className="bg-gradient-to-r from-[#FFF8F5] to-[#FFF3E0] rounded-2xl p-6 border border-[#E8A849]/20">
+      <div className="bg-gradient-to-r from-[#FFF7F2] to-[#FFF3E0] rounded-2xl p-6 border border-[#FFB800]/20">
         <h4 className="font-semibold text-gray-800 mb-4">💡 Como Funciona o Programa de Fidelidade</h4>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           {thresholds.map(tier => (
@@ -5025,7 +5127,7 @@ function PromoModal({
                 value={name}
                 onChange={e => setName(e.target.value)}
                 placeholder="Ex: Combo Família, Super Desconto"
-                className="w-full border border-gray-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-[#C75B48]/30 focus:border-[#C75B48] outline-none"
+                className="w-full border border-gray-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-[#FF5C00]/30 focus:border-[#FF5C00] outline-none"
               />
             </div>
 
@@ -5036,7 +5138,7 @@ function PromoModal({
                 value={description}
                 onChange={e => setDescription(e.target.value)}
                 placeholder="Ex: Leve 3, pague 2 em esfihas tradicionais"
-                className="w-full border border-gray-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-[#C75B48]/30 focus:border-[#C75B48] outline-none"
+                className="w-full border border-gray-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-[#FF5C00]/30 focus:border-[#FF5C00] outline-none"
               />
             </div>
 
@@ -5047,7 +5149,7 @@ function PromoModal({
                   type="button"
                   onClick={() => setType('combo')}
                   className={`flex-1 py-3 px-4 rounded-xl border-2 font-medium transition-all ${type === 'combo'
-                    ? 'border-[#C75B48] bg-[#FFF8F5] text-[#C75B48]'
+                    ? 'border-[#FF5C00] bg-[#FFF7F2] text-[#FF5C00]'
                     : 'border-gray-200 text-gray-500 hover:border-gray-300'
                     }`}
                 >
@@ -5057,7 +5159,7 @@ function PromoModal({
                   type="button"
                   onClick={() => setType('discount')}
                   className={`flex-1 py-3 px-4 rounded-xl border-2 font-medium transition-all ${type === 'discount'
-                    ? 'border-[#C75B48] bg-[#FFF8F5] text-[#C75B48]'
+                    ? 'border-[#FF5C00] bg-[#FFF7F2] text-[#FF5C00]'
                     : 'border-gray-200 text-gray-500 hover:border-gray-300'
                     }`}
                 >
@@ -5074,7 +5176,7 @@ function PromoModal({
                     <button
                       type="button"
                       onClick={addComboItem}
-                      className="text-sm text-[#C75B48] hover:underline flex items-center gap-1"
+                      className="text-sm text-[#FF5C00] hover:underline flex items-center gap-1"
                     >
                       <Plus size={14} /> Adicionar item
                     </button>
@@ -5092,7 +5194,7 @@ function PromoModal({
                           <select
                             value={item.productId}
                             onChange={e => updateComboItem(index, 'productId', e.target.value)}
-                            className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-[#C75B48]/30 focus:border-[#C75B48] outline-none"
+                            className="flex-1 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-[#FF5C00]/30 focus:border-[#FF5C00] outline-none"
                           >
                             {products.map(p => (
                               <option key={p.id} value={p.id}>{p.name}</option>
@@ -5138,7 +5240,7 @@ function PromoModal({
                       value={comboPrice}
                       onChange={e => setComboPrice(e.target.value)}
                       placeholder="0.00"
-                      className="w-full border border-gray-200 rounded-xl pl-12 pr-4 py-3 focus:ring-2 focus:ring-[#C75B48]/30 focus:border-[#C75B48] outline-none"
+                      className="w-full border border-gray-200 rounded-xl pl-12 pr-4 py-3 focus:ring-2 focus:ring-[#FF5C00]/30 focus:border-[#FF5C00] outline-none"
                     />
                   </div>
                 </div>
@@ -5149,7 +5251,7 @@ function PromoModal({
                     type="date"
                     value={expiresAt}
                     onChange={e => setExpiresAt(e.target.value)}
-                    className="w-full border border-gray-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-[#C75B48]/30 focus:border-[#C75B48] outline-none"
+                    className="w-full border border-gray-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-[#FF5C00]/30 focus:border-[#FF5C00] outline-none"
                   />
                 </div>
 
@@ -5185,7 +5287,7 @@ function PromoModal({
                         type="button"
                         onClick={() => toggleApplicableProduct(p.id)}
                         className={`text-left px-3 py-2 rounded-lg border text-sm transition-all ${applicableProducts.includes(p.id)
-                          ? 'border-[#C75B48] bg-[#FFF8F5] text-[#C75B48]'
+                          ? 'border-[#FF5C00] bg-[#FFF7F2] text-[#FF5C00]'
                           : 'border-gray-200 text-gray-600 hover:border-gray-300'
                           }`}
                       >
@@ -5202,7 +5304,7 @@ function PromoModal({
                       type="button"
                       onClick={() => setDiscountType('percentage')}
                       className={`flex-1 py-2 px-3 rounded-lg border text-sm font-medium ${discountType === 'percentage'
-                        ? 'border-[#C75B48] bg-[#FFF8F5] text-[#C75B48]'
+                        ? 'border-[#FF5C00] bg-[#FFF7F2] text-[#FF5C00]'
                         : 'border-gray-200 text-gray-500'
                         }`}
                     >
@@ -5212,7 +5314,7 @@ function PromoModal({
                       type="button"
                       onClick={() => setDiscountType('fixed')}
                       className={`flex-1 py-2 px-3 rounded-lg border text-sm font-medium ${discountType === 'fixed'
-                        ? 'border-[#C75B48] bg-[#FFF8F5] text-[#C75B48]'
+                        ? 'border-[#FF5C00] bg-[#FFF7F2] text-[#FF5C00]'
                         : 'border-gray-200 text-gray-500'
                         }`}
                     >
@@ -5236,7 +5338,7 @@ function PromoModal({
                       value={discountValue}
                       onChange={e => setDiscountValue(e.target.value)}
                       placeholder={discountType === 'percentage' ? '10' : '5.00'}
-                      className={`w-full border border-gray-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-[#C75B48]/30 focus:border-[#C75B48] outline-none ${discountType === 'fixed' ? 'pl-12' : 'pr-10'}`}
+                      className={`w-full border border-gray-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-[#FF5C00]/30 focus:border-[#FF5C00] outline-none ${discountType === 'fixed' ? 'pl-12' : 'pr-10'}`}
                     />
                   </div>
                 </div>
@@ -5247,7 +5349,7 @@ function PromoModal({
                     type="date"
                     value={expiresAt}
                     onChange={e => setExpiresAt(e.target.value)}
-                    className="w-full border border-gray-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-[#C75B48]/30 focus:border-[#C75B48] outline-none"
+                    className="w-full border border-gray-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-[#FF5C00]/30 focus:border-[#FF5C00] outline-none"
                   />
                 </div>
 
@@ -5258,7 +5360,7 @@ function PromoModal({
                     value={maxOrders}
                     onChange={e => setMaxOrders(e.target.value)}
                     placeholder="Ilimitado"
-                    className="w-full border border-gray-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-[#C75B48]/30 focus:border-[#C75B48] outline-none"
+                    className="w-full border border-gray-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-[#FF5C00]/30 focus:border-[#FF5C00] outline-none"
                   />
                 </div>
               </>
@@ -5275,7 +5377,7 @@ function PromoModal({
             </button>
             <button
               type="submit"
-              className="flex-1 py-3 px-4 bg-[#C75B48] text-white rounded-xl font-medium hover:bg-[#A84838] transition-colors"
+              className="flex-1 py-3 px-4 bg-[#FF5C00] text-white rounded-xl font-medium hover:bg-[#E65100] transition-colors"
             >
               {promotion ? 'Salvar Alterações' : 'Criar Promoção'}
             </button>
@@ -5337,8 +5439,8 @@ function PromotionsContent({
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
         <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
           <div className="flex items-center gap-3 mb-2">
-            <div className="w-10 h-10 bg-[#C75B48]/10 rounded-xl flex items-center justify-center">
-              <PackageSearch size={20} className="text-[#C75B48]" />
+            <div className="w-10 h-10 bg-[#FF5C00]/10 rounded-xl flex items-center justify-center">
+              <PackageSearch size={20} className="text-[#FF5C00]" />
             </div>
             <div>
               <p className="text-2xl font-bold text-gray-800">{promotions.length}</p>
@@ -5360,7 +5462,7 @@ function PromotionsContent({
         <div className="bg-white rounded-2xl p-6 shadow-sm border border-gray-100">
           <div className="flex items-center gap-3 mb-2">
             <div className="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center">
-              <TrendingUp size={20} className="text-blue-600" />
+              <TrendingUp size={20} className="text-[#FF5C00]" />
             </div>
             <div>
               <p className="text-2xl font-bold text-gray-800">{totalUsed}</p>
@@ -5377,7 +5479,7 @@ function PromotionsContent({
               key={f}
               onClick={() => setFilter(f)}
               className={`px-4 py-2 rounded-xl text-sm font-medium transition-colors ${filter === f
-                ? 'bg-[#C75B48] text-white'
+                ? 'bg-[#FF5C00] text-white'
                 : 'bg-white text-gray-600 border border-gray-200 hover:bg-gray-50'
                 }`}
             >
@@ -5387,7 +5489,7 @@ function PromotionsContent({
         </div>
         <button
           onClick={onAddNew}
-          className="flex items-center gap-2 px-5 py-2.5 bg-[#C75B48] text-white rounded-xl font-medium hover:bg-[#A84838] transition-colors"
+          className="flex items-center gap-2 px-5 py-2.5 bg-[#FF5C00] text-white rounded-xl font-medium hover:bg-[#E65100] transition-colors"
         >
           <Plus size={18} />
           Nova Promoção
@@ -5396,7 +5498,7 @@ function PromotionsContent({
 
       {loadingPromotions ? (
         <div className="flex items-center justify-center py-16">
-          <Loader2 size={32} className="animate-spin text-[#C75B48]" />
+          <Loader2 size={32} className="animate-spin text-[#FF5C00]" />
         </div>
       ) : filtered.length === 0 ? (
         <div className="bg-white rounded-2xl p-12 text-center border border-gray-100">
@@ -5405,7 +5507,7 @@ function PromotionsContent({
             {filter === 'all' ? 'Nenhuma promoção cadastrada.' : `Nenhuma promoção ${filter === 'active' ? 'ativa' : 'inativa'}.`}
           </p>
           {filter === 'all' && (
-            <button onClick={onAddNew} className="mt-4 text-[#C75B48] hover:underline">
+            <button onClick={onAddNew} className="mt-4 text-[#FF5C00] hover:underline">
               Criar a primeira promoção
             </button>
           )}
@@ -5424,7 +5526,7 @@ function PromotionsContent({
                   <div className="flex-1">
                     <div className="flex items-center gap-2 mb-1">
                       <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${promo.type === 'combo'
-                        ? 'bg-[#C75B48]/10 text-[#C75B48]'
+                        ? 'bg-[#FF5C00]/10 text-[#FF5C00]'
                         : 'bg-green-100 text-green-700'
                         }`}>
                         {promo.type === 'combo' ? 'Combo' : 'Desconto'}
@@ -5443,7 +5545,7 @@ function PromotionsContent({
                   <div className="flex items-center gap-1">
                     <button
                       onClick={() => onEdit(promo)}
-                      className="p-2 text-gray-400 hover:text-[#C75B48] hover:bg-[#FFF8F5] rounded-lg transition-colors"
+                      className="p-2 text-gray-400 hover:text-[#FF5C00] hover:bg-[#FFF7F2] rounded-lg transition-colors"
                     >
                       <Edit size={16} />
                     </button>
@@ -5457,7 +5559,7 @@ function PromotionsContent({
                 </div>
 
                 {promo.type === 'combo' ? (
-                  <div className="bg-[#FFF8F5] rounded-xl p-3 mb-3">
+                  <div className="bg-[#FFF7F2] rounded-xl p-3 mb-3">
                     <p className="text-xs text-gray-500 mb-1">Itens do combo:</p>
                     <p className="text-sm text-gray-700 font-medium mb-2">
                       {getComboItemsSummary(promo.items)}
@@ -5469,7 +5571,7 @@ function PromotionsContent({
                           <span className="text-xs text-gray-400 line-through">
                             R$ {getComboOriginalPrice(promo.items).toFixed(2)}
                           </span>
-                          <span className="text-lg font-bold text-[#C75B48]">
+                          <span className="text-lg font-bold text-[#FF5C00]">
                             R$ {promo.comboPrice?.toFixed(2)}
                           </span>
                         </div>
@@ -5520,6 +5622,324 @@ function PromotionsContent({
           })}
         </div>
       )}
+    </div>
+  );
+}
+
+// --- Banners Content ---
+function BannersContent({
+  banners,
+  loading,
+  onAddNew,
+  onEdit,
+  onDelete,
+  onToggleActive
+}: {
+  banners: Banner[];
+  loading: boolean;
+  onAddNew: () => void;
+  onEdit: (banner: Banner) => void;
+  onDelete: (id: string) => void;
+  onToggleActive: (banner: Banner) => void;
+}) {
+  return (
+    <div className="p-8">
+      <div className="flex justify-between items-center mb-8">
+        <div>
+          <h3 className="text-xl font-bold text-gray-800">Banners Rotativos</h3>
+          <p className="text-sm text-gray-500">Gerencie os banners que aparecem no topo do cardápio</p>
+        </div>
+        <button
+          onClick={onAddNew}
+          className="bg-[#FF5C00] text-white px-6 py-3 rounded-2xl font-bold flex items-center gap-2 shadow-lg shadow-[#FF5C00]/20 hover:scale-105 transition-transform"
+        >
+          <Plus size={20} />
+          Novo Banner
+        </button>
+      </div>
+
+      {loading ? (
+        <div className="flex justify-center p-12">
+          <Loader2 className="animate-spin text-[#FF5C00]" size={48} />
+        </div>
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {banners.map((banner) => (
+            <motion.div
+              key={banner.id}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className={`bg-white rounded-3xl overflow-hidden shadow-sm border-2 transition-all ${banner.active ? 'border-transparent' : 'border-gray-100 grayscale'
+                }`}
+            >
+              <div className="relative h-48 bg-gray-100">
+                <img
+                  src={banner.image}
+                  alt={banner.title || 'Banner'}
+                  className="w-full h-full object-cover"
+                />
+                <div className="absolute top-4 right-4 flex gap-2">
+                  <button
+                    onClick={() => onToggleActive(banner)}
+                    className={`p-2 rounded-xl shadow-lg transition-colors ${banner.active ? 'bg-green-500 text-white' : 'bg-gray-500 text-white'
+                      }`}
+                    title={banner.active ? 'Desativar' : 'Ativar'}
+                  >
+                    {banner.active ? <Check size={18} /> : <X size={18} />}
+                  </button>
+                </div>
+              </div>
+              <div className="p-6">
+                <div className="flex justify-between items-start mb-4">
+                  <div>
+                    <h4 className="font-bold text-gray-800 line-clamp-1">
+                      {banner.title || 'Sem título'}
+                    </h4>
+                    {banner.subtitle && (
+                      <p className="text-sm text-gray-500 line-clamp-1">{banner.subtitle}</p>
+                    )}
+                    <p className="text-sm text-gray-400">Ordem: {banner.order}</p>
+                  </div>
+                </div>
+                {banner.link && (
+                  <p className="text-xs text-[#FF5C00] mb-4 truncate">
+                    Link: {banner.link}
+                  </p>
+                )}
+                <div className="flex gap-2 mt-auto">
+                  <button
+                    onClick={() => onEdit(banner)}
+                    className="flex-1 bg-gray-50 text-gray-600 py-3 rounded-xl font-bold hover:bg-gray-100 transition-colors flex items-center justify-center gap-2"
+                  >
+                    <Edit size={18} />
+                    Editar
+                  </button>
+                  <button
+                    onClick={() => onDelete(banner.id)}
+                    className="p-3 bg-red-50 text-red-500 rounded-xl hover:bg-red-100 transition-colors"
+                  >
+                    <Trash2 size={18} />
+                  </button>
+                </div>
+              </div>
+            </motion.div>
+          ))}
+
+          {banners.length === 0 && (
+            <div className="col-span-full bg-white rounded-3xl p-12 text-center border-2 border-dashed border-gray-200">
+              <div className="w-20 h-20 bg-gray-50 rounded-full flex items-center justify-center mx-auto mb-4">
+                <ImageIcon size={40} className="text-gray-300" />
+              </div>
+              <h4 className="text-lg font-bold text-gray-800 mb-2">Nenhum banner encontrado</h4>
+              <p className="text-gray-500">Comece adicionando seu primeiro banner rotativo.</p>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// --- Banner Modal ---
+function BannerModal({
+  banner,
+  onSave,
+  onClose
+}: {
+  banner: Banner | null;
+  onSave: (data: Omit<Banner, 'id' | 'createdAt'>, file?: File) => void;
+  onClose: () => void;
+}) {
+  const [formData, setFormData] = useState({
+    title: banner?.title || '',
+    subtitle: banner?.subtitle || '',
+    tag: banner?.tag || '',
+    link: banner?.link || '',
+    order: banner?.order || 0,
+    active: banner?.active ?? true,
+    image: banner?.image || ''
+  });
+  const [imageFile, setImageFile] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(banner?.image || null);
+
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setImageFile(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setImagePreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!imagePreview) {
+      alert('Por favor, selecione uma imagem.');
+      return;
+    }
+    onSave(formData as any, imageFile || undefined);
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-center justify-center p-4 overflow-y-auto">
+      <motion.div
+        initial={{ opacity: 0, scale: 0.9, y: 20 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.9, y: 20 }}
+        className="bg-white rounded-[40px] shadow-2xl max-w-2xl w-full p-8 md:p-12 my-auto"
+      >
+        <div className="flex justify-between items-center mb-8">
+          <h2 className="text-3xl font-extrabold text-gray-800 tracking-tight">
+            {banner ? 'Editar Banner' : 'Novo Banner'}
+          </h2>
+          <button onClick={onClose} className="p-3 hover:bg-gray-100 rounded-full transition-colors">
+            <X size={24} />
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            <div className="space-y-6">
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wider">
+                  Título (Opcional)
+                </label>
+                <input
+                  type="text"
+                  value={formData.title}
+                  onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                  className="w-full bg-gray-50 border-0 rounded-2xl py-4 px-6 focus:ring-2 focus:ring-[#FF5C00] transition-all"
+                  placeholder="Ex: Promoção de Verão"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wider">
+                  Tag (Opcional - Ex: EXCLUSIVO CAMPANINI)
+                </label>
+                <input
+                  type="text"
+                  value={formData.tag}
+                  onChange={(e) => setFormData({ ...formData, tag: e.target.value })}
+                  className="w-full bg-gray-50 border-0 rounded-2xl py-4 px-6 focus:ring-2 focus:ring-[#FF5C00] transition-all"
+                  placeholder="Ex: EXCLUSIVO CAMPANINI"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wider">
+                  Link (Opcional)
+                </label>
+                <input
+                  type="text"
+                  value={formData.link}
+                  onChange={(e) => setFormData({ ...formData, link: e.target.value })}
+                  className="w-full bg-gray-50 border-0 rounded-2xl py-4 px-6 focus:ring-2 focus:ring-[#FF5C00] transition-all"
+                  placeholder="Ex: /category/fit"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wider">
+                  Subtítulo (Opcional)
+                </label>
+                <input
+                  type="text"
+                  value={formData.subtitle}
+                  onChange={(e) => setFormData({ ...formData, subtitle: e.target.value })}
+                  className="w-full bg-gray-50 border-0 rounded-2xl py-4 px-6 focus:ring-2 focus:ring-[#FF5C00] transition-all"
+                  placeholder="Ex: Aproveite nossa oferta especial"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wider">
+                    Ordem
+                  </label>
+                  <input
+                    type="number"
+                    value={formData.order}
+                    onChange={(e) => setFormData({ ...formData, order: parseInt(e.target.value) })}
+                    className="w-full bg-gray-50 border-0 rounded-2xl py-4 px-6 focus:ring-2 focus:ring-[#FF5C00] transition-all"
+                    required
+                  />
+                </div>
+                <div className="flex items-end pb-4">
+                  <label className="flex items-center gap-3 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={formData.active}
+                      onChange={(e) => setFormData({ ...formData, active: e.target.checked })}
+                      className="w-6 h-6 rounded-lg text-[#FF5C00] focus:ring-[#FF5C00] border-gray-300"
+                    />
+                    <span className="text-sm font-bold text-gray-700 uppercase tracking-wider">Ativo</span>
+                  </label>
+                </div>
+              </div>
+            </div>
+
+            <div className="space-y-4">
+              <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wider">
+                Imagem do Banner
+              </label>
+              <div
+                onClick={() => document.getElementById('banner-image-upload')?.click()}
+                className="aspect-video bg-gray-50 border-2 border-dashed border-gray-200 rounded-[32px] overflow-hidden cursor-pointer hover:border-[#FF5C00]/50 hover:bg-[#FF5C00]/5 transition-all flex flex-col items-center justify-center group relative"
+              >
+                {imagePreview ? (
+                  <>
+                    <img src={imagePreview} alt="Preview" className="w-full h-full object-cover" />
+                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
+                      <p className="text-white font-bold flex items-center gap-2">
+                        <Camera size={20} /> Alterar Imagem
+                      </p>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div className="w-16 h-16 bg-white rounded-2xl flex items-center justify-center shadow-sm mb-4 group-hover:scale-110 transition-transform">
+                      <Camera size={32} className="text-gray-400" />
+                    </div>
+                    <p className="text-sm font-bold text-gray-500 text-center px-6">
+                      Clique para selecionar<br />ou arraste a imagem
+                    </p>
+                  </>
+                )}
+                <input
+                  id="banner-image-upload"
+                  type="file"
+                  accept="image/*"
+                  onChange={handleImageChange}
+                  className="hidden"
+                />
+              </div>
+              <p className="text-[10px] text-gray-400 text-center font-medium uppercase tracking-widest">
+                Recomendado: 1200x400px (3:1)
+              </p>
+            </div>
+          </div>
+
+          <div className="flex gap-4 pt-4">
+            <button
+              type="button"
+              onClick={onClose}
+              className="flex-1 bg-gray-50 text-gray-600 py-5 rounded-[24px] font-bold hover:bg-gray-100 transition-all border border-transparent active:scale-95"
+            >
+              Cancelar
+            </button>
+            <button
+              type="submit"
+              className="flex-[2] bg-gradient-to-r from-[#FF5C00] to-[#E65100] text-white py-5 rounded-[24px] font-bold shadow-xl shadow-[#FF5C00]/30 hover:shadow-[#FF5C00]/40 transition-all active:scale-95 flex items-center justify-center gap-3"
+            >
+              <Check size={24} />
+              {banner ? 'Salvar Alterações' : 'Criar Banner'}
+            </button>
+          </div>
+        </form>
+      </motion.div>
     </div>
   );
 }

@@ -128,6 +128,7 @@ export interface Promotion {
   discountType?: 'percentage' | 'fixed';
   discountValue?: number;
   applicableProducts?: string[];
+  image?: string;
   active: boolean;
   startsAt?: Date;
   expiresAt?: Date;
@@ -256,4 +257,16 @@ export interface ShoppingListItem {
   toBuy: number; // requiredQuantity - inStock
   estimatedCost: number;
   supplier?: string;
+}
+
+export interface Banner {
+  id: string;
+  image: string;
+  title?: string;
+  subtitle?: string;
+  tag?: string;
+  link?: string;
+  active: boolean;
+  order: number;
+  createdAt: Date;
 }

@@ -1,37 +1,69 @@
-@import url('https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;0,9..40,600;0,9..40,700;1,9..40,400&family=Playfair+Display:wght@400;500;600;700&family=Caveat:wght@400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;500;600;700;800&family=Caveat:wght@400;700&display=swap');
 @import "tailwindcss";
 
 @theme {
-  --font-sans: "DM Sans", ui-sans-serif, system-ui, sans-serif;
-  --font-serif: "Playfair Display", ui-serif, Georgia, serif;
+  --font-sans: "Lexend", ui-sans-serif, system-ui, sans-serif;
+  --font-lexend: "Lexend", sans-serif;
   --font-handwritten: "Caveat", cursive;
-  --font-size-base: 1.125rem;
   
-  --color-cream: #FFF8F5;
-  --color-cream-dark: #F5EDE8;
-  --color-terracotta: #C75B48;
-  --color-terracotta-dark: #A84838;
-  --color-terracotta-light: #F0C4B8;
-  --color-coral: #E07A5F;
-  --color-coral-pastel: #F8D4CC;
-  --color-amber: #E8A849;
-  --color-amber-light: #F5DFB0;
-  --color-chocolate: #5D4037;
-  --color-text: #3D2A24;
-  --color-text-muted: #8C7066;
-  --color-gold: #D4A574;
-  --color-gold-light: #F5E6D0;
-  --color-rose: #D4A5A5;
-  --color-rose-light: #F5E0E0;
-  --color-card: #FFFFFF;
-  --color-border: #F0E4DF;
+  --color-background: #F9FAFB;
+  --color-primary: #FF5C00;
+  --color-secondary: #FFB800;
+  --color-surface: #FFFFFF;
+  --color-text-main: #1F2937;
+  --color-text-muted: #6B7280;
+  --color-border-light: #F3F4F6;
+  
+  --radius-xl: 18px;
+  --radius-2xl: 24px;
 }
 
-body {
-  font-size: 18px;
-  line-height: 1.7;
+@layer base {
+  body {
+    @apply bg-background text-text-main font-sans antialiased;
+    font-size: 16px;
+  }
 }
 
-h1, h2, h3 {
-  font-family: var(--font-handwritten);
+@utility glass-effect {
+  background: rgba(255, 255, 255, 0.4);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.07);
+}
+
+@utility no-scrollbar {
+  &::-webkit-scrollbar {
+    display: none;
+  }
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+@layer components {
+
+  .sticky-nav {
+    @apply sticky top-[72px] z-40 bg-background/80 backdrop-blur-md;
+  }
+
+  .pill-nav {
+    @apply flex overflow-x-auto md:overflow-x-visible md:flex-wrap gap-3 py-4 no-scrollbar scroll-smooth;
+  }
+
+  .pill-item {
+    @apply whitespace-nowrap px-6 py-2 rounded-full font-medium transition-all border;
+  }
+
+  .pill-item-active {
+    @apply bg-primary text-white border-primary shadow-lg shadow-primary/20;
+  }
+
+  .pill-item-inactive {
+    @apply bg-white text-text-muted border-border-light hover:border-primary/30;
+  }
+
+  .banner-container {
+    @apply relative aspect-video w-full rounded-2xl overflow-hidden shadow-xl mb-6;
+  }
 }

@@ -111,7 +111,7 @@ export default function AddressManager({ addresses, uid, onUpdate }: AddressMana
         <h3 className="text-lg font-semibold text-[#3D2A24]">Meus Endereços</h3>
         <button
           onClick={openNew}
-          className="flex items-center gap-1.5 text-sm text-[#C75B48] font-medium hover:underline"
+          className="flex items-center gap-1.5 text-sm text-[#FF5C00] font-medium hover:underline"
         >
           <Plus size={16} />
           Novo endereço
@@ -119,10 +119,10 @@ export default function AddressManager({ addresses, uid, onUpdate }: AddressMana
       </div>
 
       {addresses.length === 0 && !showForm && (
-        <div className="text-center py-8 bg-[#FFF8F5] rounded-2xl border border-[#F0E4DF]">
+        <div className="text-center py-8 bg-[#FFF7F2] rounded-2xl border border-[#F0E4DF]">
           <MapPin size={32} className="mx-auto text-[#F0E4DF] mb-2" />
           <p className="text-[#8C7066] text-sm">Nenhum endereço cadastrado</p>
-          <button onClick={openNew} className="mt-2 text-[#C75B48] text-sm font-medium hover:underline">
+          <button onClick={openNew} className="mt-2 text-[#FF5C00] text-sm font-medium hover:underline">
             Adicionar primeiro endereço
           </button>
         </div>
@@ -139,7 +139,7 @@ export default function AddressManager({ addresses, uid, onUpdate }: AddressMana
               <div className="flex items-start gap-3">
                 <div className="mt-0.5">
                   {addr.isDefault ? (
-                    <Star size={16} className="text-[#E8A849] fill-[#E8A849]" />
+                    <Star size={16} className="text-[#FFB800] fill-[#FFB800]" />
                   ) : (
                     <MapPin size={16} className="text-[#8C7066]" />
                   )}
@@ -148,7 +148,7 @@ export default function AddressManager({ addresses, uid, onUpdate }: AddressMana
                   <div className="flex items-center gap-2">
                     <span className="font-semibold text-[#3D2A24]">{addr.label}</span>
                     {addr.isDefault && (
-                      <span className="text-xs bg-[#FFF8F5] text-[#C75B48] px-2 py-0.5 rounded-full">Principal</span>
+                      <span className="text-xs bg-[#FFF7F2] text-[#FF5C00] px-2 py-0.5 rounded-full">Principal</span>
                     )}
                   </div>
                   <p className="text-sm text-[#8C7066] mt-0.5">
@@ -167,7 +167,7 @@ export default function AddressManager({ addresses, uid, onUpdate }: AddressMana
                 {!addr.isDefault && (
                   <button
                     onClick={() => handleSetDefault(addr)}
-                    className="p-1.5 text-[#8C7066] hover:text-[#E8A849] transition-colors"
+                    className="p-1.5 text-[#8C7066] hover:text-[#FFB800] transition-colors"
                     title="Definir como principal"
                   >
                     <Star size={16} />
@@ -175,7 +175,7 @@ export default function AddressManager({ addresses, uid, onUpdate }: AddressMana
                 )}
                 <button
                   onClick={() => openEdit(addr)}
-                  className="p-1.5 text-[#8C7066] hover:text-[#C75B48] transition-colors"
+                  className="p-1.5 text-[#8C7066] hover:text-[#FF5C00] transition-colors"
                 >
                   <Pencil size={16} />
                 </button>
@@ -224,7 +224,7 @@ export default function AddressManager({ addresses, uid, onUpdate }: AddressMana
                     value={form.label}
                     onChange={e => setForm({ ...form, label: e.target.value })}
                     required
-                    className="w-full bg-[#FFF8F5] border border-[#F0E4DF] rounded-xl p-3 focus:ring-2 focus:ring-[#C75B48]/30 focus:border-[#C75B48] outline-none text-sm text-[#3D2A24]"
+                    className="w-full bg-[#FFF7F2] border border-[#F0E4DF] rounded-xl p-3 focus:ring-2 focus:ring-[#FF5C00]/30 focus:border-[#FF5C00] outline-none text-sm text-[#3D2A24]"
                   />
                 </div>
                 <div className="grid grid-cols-3 gap-2">
@@ -236,7 +236,7 @@ export default function AddressManager({ addresses, uid, onUpdate }: AddressMana
                       value={form.street}
                       onChange={e => setForm({ ...form, street: e.target.value })}
                       required
-                      className="w-full bg-[#FFF8F5] border border-[#F0E4DF] rounded-xl p-3 focus:ring-2 focus:ring-[#C75B48]/30 focus:border-[#C75B48] outline-none text-sm text-[#3D2A24]"
+                      className="w-full bg-[#FFF7F2] border border-[#F0E4DF] rounded-xl p-3 focus:ring-2 focus:ring-[#FF5C00]/30 focus:border-[#FF5C00] outline-none text-sm text-[#3D2A24]"
                     />
                   </div>
                   <div>
@@ -247,7 +247,7 @@ export default function AddressManager({ addresses, uid, onUpdate }: AddressMana
                       value={form.number}
                       onChange={e => setForm({ ...form, number: e.target.value })}
                       required
-                      className="w-full bg-[#FFF8F5] border border-[#F0E4DF] rounded-xl p-3 focus:ring-2 focus:ring-[#C75B48]/30 focus:border-[#C75B48] outline-none text-sm text-[#3D2A24]"
+                      className="w-full bg-[#FFF7F2] border border-[#F0E4DF] rounded-xl p-3 focus:ring-2 focus:ring-[#FF5C00]/30 focus:border-[#FF5C00] outline-none text-sm text-[#3D2A24]"
                     />
                   </div>
                 </div>
@@ -259,7 +259,7 @@ export default function AddressManager({ addresses, uid, onUpdate }: AddressMana
                       placeholder="Apto, Bloco..."
                       value={form.complement}
                       onChange={e => setForm({ ...form, complement: e.target.value })}
-                      className="w-full bg-[#FFF8F5] border border-[#F0E4DF] rounded-xl p-3 focus:ring-2 focus:ring-[#C75B48]/30 focus:border-[#C75B48] outline-none text-sm text-[#3D2A24]"
+                      className="w-full bg-[#FFF7F2] border border-[#F0E4DF] rounded-xl p-3 focus:ring-2 focus:ring-[#FF5C00]/30 focus:border-[#FF5C00] outline-none text-sm text-[#3D2A24]"
                     />
                   </div>
                   <div>
@@ -269,7 +269,7 @@ export default function AddressManager({ addresses, uid, onUpdate }: AddressMana
                       placeholder="09100-000"
                       value={form.zipCode}
                       onChange={e => setForm({ ...form, zipCode: e.target.value })}
-                      className="w-full bg-[#FFF8F5] border border-[#F0E4DF] rounded-xl p-3 focus:ring-2 focus:ring-[#C75B48]/30 focus:border-[#C75B48] outline-none text-sm text-[#3D2A24]"
+                      className="w-full bg-[#FFF7F2] border border-[#F0E4DF] rounded-xl p-3 focus:ring-2 focus:ring-[#FF5C00]/30 focus:border-[#FF5C00] outline-none text-sm text-[#3D2A24]"
                     />
                   </div>
                 </div>
@@ -282,7 +282,7 @@ export default function AddressManager({ addresses, uid, onUpdate }: AddressMana
                       value={form.neighborhood}
                       onChange={e => setForm({ ...form, neighborhood: e.target.value })}
                       required
-                      className="w-full bg-[#FFF8F5] border border-[#F0E4DF] rounded-xl p-3 focus:ring-2 focus:ring-[#C75B48]/30 focus:border-[#C75B48] outline-none text-sm text-[#3D2A24]"
+                      className="w-full bg-[#FFF7F2] border border-[#F0E4DF] rounded-xl p-3 focus:ring-2 focus:ring-[#FF5C00]/30 focus:border-[#FF5C00] outline-none text-sm text-[#3D2A24]"
                     />
                   </div>
                   <div>
@@ -291,7 +291,7 @@ export default function AddressManager({ addresses, uid, onUpdate }: AddressMana
                       type="text"
                       value={form.city}
                       onChange={e => setForm({ ...form, city: e.target.value })}
-                      className="w-full bg-[#FFF8F5] border border-[#F0E4DF] rounded-xl p-3 focus:ring-2 focus:ring-[#C75B48]/30 focus:border-[#C75B48] outline-none text-sm text-[#3D2A24]"
+                      className="w-full bg-[#FFF7F2] border border-[#F0E4DF] rounded-xl p-3 focus:ring-2 focus:ring-[#FF5C00]/30 focus:border-[#FF5C00] outline-none text-sm text-[#3D2A24]"
                     />
                   </div>
                 </div>
@@ -303,7 +303,7 @@ export default function AddressManager({ addresses, uid, onUpdate }: AddressMana
                       value={form.state}
                       onChange={e => setForm({ ...form, state: e.target.value })}
                       maxLength={2}
-                      className="w-full bg-[#FFF8F5] border border-[#F0E4DF] rounded-xl p-3 focus:ring-2 focus:ring-[#C75B48]/30 focus:border-[#C75B48] outline-none text-sm text-[#3D2A24]"
+                      className="w-full bg-[#FFF7F2] border border-[#F0E4DF] rounded-xl p-3 focus:ring-2 focus:ring-[#FF5C00]/30 focus:border-[#FF5C00] outline-none text-sm text-[#3D2A24]"
                     />
                   </div>
                   <div className="flex items-center pt-5">
@@ -312,7 +312,7 @@ export default function AddressManager({ addresses, uid, onUpdate }: AddressMana
                         type="checkbox"
                         checked={form.isDefault}
                         onChange={e => setForm({ ...form, isDefault: e.target.checked })}
-                        className="w-4 h-4 accent-[#C75B48]"
+                        className="w-4 h-4 accent-[#FF5C00]"
                       />
                       <span className="text-sm text-[#3D2A24]">Endereço principal</span>
                     </label>
@@ -322,7 +322,7 @@ export default function AddressManager({ addresses, uid, onUpdate }: AddressMana
                 <button
                   type="submit"
                   disabled={loading}
-                  className="w-full bg-gradient-to-r from-[#C75B48] to-[#A84838] text-white py-3 rounded-xl font-handwritten font-semibold text-lg shadow-lg shadow-[#C75B48]/20 flex items-center justify-center gap-2 mt-2 disabled:opacity-50"
+                  className="w-full bg-gradient-to-r from-[#FF5C00] to-[#E65100] text-white py-3 rounded-xl font-handwritten font-semibold text-lg shadow-lg shadow-[#FF5C00]/20 flex items-center justify-center gap-2 mt-2 disabled:opacity-50"
                 >
                   {loading ? <Loader2 size={18} className="animate-spin" /> : <Check size={18} />}
                   {editingId ? 'Salvar alterações' : 'Adicionar endereço'}
@@ -335,3 +335,4 @@ export default function AddressManager({ addresses, uid, onUpdate }: AddressMana
     </div>
   );
 }
+

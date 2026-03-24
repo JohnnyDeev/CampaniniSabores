@@ -21,8 +21,8 @@ export default function ProfilePageWrapper() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#FFF8F5] flex items-center justify-center">
-        <Loader2 size={48} className="animate-spin text-[#C75B48]" />
+      <div className="min-h-screen bg-[#FFF7F2] flex items-center justify-center">
+        <Loader2 size={48} className="animate-spin text-[#FF5C00]" />
       </div>
     );
   }
@@ -40,3 +40,4 @@ export default function ProfilePageWrapper() {
     />
   );
 }
+
