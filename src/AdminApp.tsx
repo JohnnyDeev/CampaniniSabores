@@ -853,7 +853,7 @@ export default function AdminApp() {
       {/* Sidebar */}
       <motion.aside
         animate={{ width: sidebarOpen ? 280 : 80 }}
-        className="bg-gray-900 text-white flex flex-col fixed h-full z-20 overflow-hidden"
+        className="bg-gray-900 text-white flex flex-col fixed h-full z-20"
       >
         <div className="p-6 border-b border-gray-800 flex items-center gap-4 flex-shrink-0">
           <div className="w-12 h-12 bg-[#FF5C00] rounded-full flex items-center justify-center text-white font-bold text-2xl shadow-lg shadow-[#FF5C00]/20 flex-shrink-0">
@@ -867,7 +867,7 @@ export default function AdminApp() {
           )}
         </div>
 
-        <nav className="flex-1 py-6 px-4 space-y-1 overflow-y-auto">
+        <nav className="flex-1 py-6 px-4 space-y-1 overflow-y-auto scrollbar-thin scrollbar-thumb-white/20 scrollbar-track-white/5 scrollbar-thumb-rounded hover:scrollbar-thumb-white/30">
           {NAV_ITEMS.map(item => (
             <button
               key={item.id}
@@ -912,9 +912,9 @@ export default function AdminApp() {
 
         <button
           onClick={() => setSidebarOpen(!sidebarOpen)}
-          className="absolute -right-3 top-20 w-6 h-6 bg-gray-700 rounded-full flex items-center justify-center text-white shadow-lg"
+          className="absolute -right-3 top-20 w-6 h-6 bg-gray-700 rounded-full flex items-center justify-center text-white shadow-lg z-30"
         >
-          <ChevronRight size={14} className={sidebarOpen ? '' : 'rotate-180'} />
+          <ChevronRight size={14} className={`${sidebarOpen ? 'rotate-180' : ''} transition-transform`} />
         </button>
       </motion.aside>
 
