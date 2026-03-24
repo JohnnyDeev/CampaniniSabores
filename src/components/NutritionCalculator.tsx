@@ -108,7 +108,6 @@ export default function NutritionCalculator() {
       totalKcal,
       totalWeight_g,
       kcalPerServing,
-      multipleServings: {},
     });
 
     // Salvar receita automaticamente
@@ -124,10 +123,8 @@ export default function NutritionCalculator() {
           kcalPerServing,
         });
         await loadSavedRecipes();
-        alert('Receita salva com sucesso!');
       } catch (error) {
         console.error('Erro ao salvar receita:', error);
-        alert('Erro ao salvar receita. Verifique o console.');
       } finally {
         setSaving(false);
       }
@@ -316,7 +313,14 @@ export default function NutritionCalculator() {
                       });
                     }
                   }}
-                  className="w-32 border border-gray-200 rounded-xl p-3 focus:ring-2 focus:ring-[#FF5C00]/30 focus:border-[#FF5C00] outline-none text-lg font-semibold"
+                  onBlur={(e) => {
+                    // Remove o zero à esquerda quando perde o foco
+                    const value = parseInt(e.target.value) || 0;
+                    if (value > 0) {
+                      setServingWeight(value);
+                    }
+                  }}
+                  className="w-32 border border-gray-200 rounded-xl p-3 focus:ring-2 focus:ring-[#FF5C00]/30 focus:border-[#FF5C00] outline-none text-lg font-semibold [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                 />
                 <span className="text-gray-500">g</span>
               </div>
