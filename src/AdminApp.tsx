@@ -1,3 +1,4 @@
+import { NumericFormat } from 'react-number-format';
 import React, { useState, useEffect, useRef } from 'react';
 import {
   ShoppingBag,
@@ -92,6 +93,7 @@ interface Product {
 
 interface Order {
   id: string;
+  orderNumber?: number;
   customerId?: string;
   customerName: string;
   customerPhone?: string;
@@ -101,6 +103,7 @@ interface Order {
   total: number;
   status: 'novo' | 'producao' | 'saiu' | 'entregue';
   createdAt: FirebaseTimestamp | Date;
+  deliveryDate?: FirebaseTimestamp | Date;
   whatsappSent: boolean;
   paid: boolean;
   loyaltyPointsEarned?: number;
@@ -230,7 +233,7 @@ export default function AdminApp() {
     if (activeTab === 'dashboard') {
       loadDashboardStats();
     }
-    if (activeTab === 'products') {
+    if (activeTab === 'products' || activeTab === 'promotions' || activeTab === 'orders' || activeTab === 'nutrition') {
       loadProducts();
     }
     if (activeTab === 'coupons') {
@@ -1173,6 +1176,7 @@ export default function AdminApp() {
               onTogglePaid={handleTogglePaid}
               highlightId={highlightOrderId}
               onAddManualOrder={() => setShowManualOrderModal(true)}
+              onUpdateDeliveryDate={handleUpdateDeliveryDate}
             />
           )}
 
@@ -1539,7 +1543,16 @@ function DashboardContent({ totalRevenue, totalOrders, avgRating, newOrders, loa
   );
 }
 
-function OrdersContent({ orders, loadingOrders, products, onStatusChange, onTogglePaid, highlightId, onAddManualOrder }: {
+function OrdersContent({ 
+  orders, 
+  loadingOrders, 
+  products, 
+  onStatusChange, 
+  onTogglePaid, 
+  highlightId, 
+  onAddManualOrder,
+  onUpdateDeliveryDate 
+}: {
   orders: Order[];
   loadingOrders: boolean;
   products: Product[];
@@ -1547,6 +1560,7 @@ function OrdersContent({ orders, loadingOrders, products, onStatusChange, onTogg
   onTogglePaid: (order: Order) => Promise<void>;
   highlightId?: string | null;
   onAddManualOrder: () => void;
+  onUpdateDeliveryDate: (orderId: string, deliveryDate: string) => Promise<void>;
 }) {
   const [filter, setFilter] = useState('all');
   const [dateFilter, setDateFilter] = useState('today');
@@ -1697,7 +1711,7 @@ function OrdersContent({ orders, loadingOrders, products, onStatusChange, onTogg
         {/* Orders List */}
         <div className="divide-y divide-gray-100">
           {sortedOrders.map((order) => {
-            const statusConfig = STATUS_CONFIG[order.status];
+            const statusConfig = STATUS_CONFIG[order.status] || STATUS_CONFIG.novo;
             const StatusIcon = statusConfig.icon;
             const itemCount = order.items.reduce((acc: number, item: any) => acc + item.quantity, 0);
 
@@ -1717,8 +1731,8 @@ function OrdersContent({ orders, loadingOrders, products, onStatusChange, onTogg
                       <Calendar size={12} />
                       <span className="text-xs">
                         {order.deliveryDate instanceof Date
-                          ? order.deliveryDate.toLocaleDateString('pt-BR', { day: '2digit', month: '2-digit' })
-                          : toDate(order.deliveryDate).toLocaleDateString('pt-BR', { day: '2digit', month: '2-digit' })
+                          ? order.deliveryDate.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })
+                          : toDate(order.deliveryDate).toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' })
                         }
                       </span>
                     </div>
@@ -1802,7 +1816,7 @@ function OrdersContent({ orders, loadingOrders, products, onStatusChange, onTogg
             onCopy={() => handleCopyOrder(selectedOrder)}
             products={products}
             onStatusChange={onStatusChange}
-            onUpdateDeliveryDate={handleUpdateDeliveryDate}
+            onUpdateDeliveryDate={onUpdateDeliveryDate}
           />
         )}
       </AnimatePresence>
@@ -1837,7 +1851,7 @@ function OrderDetailsModal({
   const [isPaid, setIsPaid] = useState(order.paid);
   const [deliveryDate, setDeliveryDate] = useState(
     order.deliveryDate
-      ? new Date(order.deliveryDate).toISOString().slice(0, 16)
+      ? toDate(order.deliveryDate).toISOString().slice(0, 16)
       : ''
   );
   const [savingDeliveryDate, setSavingDeliveryDate] = useState(false);
@@ -1875,12 +1889,16 @@ function OrderDetailsModal({
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+    <div 
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
+      onClick={onClose}
+    >
       <motion.div
         initial={{ opacity: 0, scale: 0.9, y: 20 }}
         animate={{ opacity: 1, scale: 1, y: 0 }}
         exit={{ opacity: 0, scale: 0.9, y: 20 }}
-        className="bg-white rounded-3xl w-full max-w-lg shadow-2xl max-h-[90vh] overflow-y-auto"
+        onClick={(e) => e.stopPropagation()}
+        className="bg-white rounded-3xl w-full max-w-lg shadow-2xl max-h-[90vh] flex flex-col overflow-hidden px-2"
       >
         <div className="p-6 border-b border-gray-100 flex items-center justify-between">
           <div>
@@ -1892,7 +1910,7 @@ function OrderDetailsModal({
           </button>
         </div>
 
-        <div className="p-6 space-y-6">
+        <div className="p-6 space-y-6 flex-1 overflow-y-auto custom-scrollbar pr-4">
           {/* Customer Info */}
           <div className="bg-gray-50 rounded-2xl p-4">
             <div className="flex items-center justify-between mb-3">
@@ -2030,17 +2048,19 @@ function OrderDetailsModal({
 
               {showStatusDropdown && statusFlow[status].length > 0 && (
                 <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-xl shadow-lg border border-gray-200 overflow-hidden z-10">
-                  {statusFlow[status].map((nextStatus) => (
-                    <button
-                      key={nextStatus}
-                      onClick={() => handleStatusSelect(nextStatus)}
-                      className={`w-full p-3 text-left flex items-center gap-2 hover:bg-gray-50 transition-colors ${STATUS_CONFIG[nextStatus].bg
-                        } ${STATUS_CONFIG[nextStatus].color}`}
-                    >
-                      {React.createElement(STATUS_CONFIG[nextStatus].icon, { size: 18 })}
-                      {STATUS_CONFIG[nextStatus].label}
-                    </button>
-                  ))}
+                   {statusFlow[status].map((nextStatus) => {
+                     const config = STATUS_CONFIG[nextStatus] || STATUS_CONFIG.novo;
+                     return (
+                       <button
+                         key={nextStatus}
+                         onClick={() => handleStatusSelect(nextStatus)}
+                         className={`w-full p-3 text-left flex items-center gap-2 hover:bg-gray-50 transition-colors ${config.bg} ${config.color}`}
+                       >
+                         {React.createElement(config.icon, { size: 18 })}
+                         {config.label}
+                       </button>
+                     );
+                   })}
                 </div>
               )}
             </div>
@@ -3747,10 +3767,11 @@ function AddReceivableModal({
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Número do Pedido *</label>
-              <input
-                type="number"
+              <NumericFormat
                 value={orderNumber}
-                onChange={e => setOrderNumber(e.target.value)}
+                onValueChange={(values) => setOrderNumber(values.value)}
+                decimalScale={0}
+                allowNegative={false}
                 placeholder="123"
                 className="w-full border border-gray-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-[#FF5C00]/20 focus:border-[#FF5C00] outline-none"
                 required
@@ -3793,12 +3814,15 @@ function AddReceivableModal({
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Valor (R$) *</label>
-              <input
-                type="number"
-                step="0.01"
+              <NumericFormat
                 value={amount}
-                onChange={e => setAmount(e.target.value)}
-                placeholder="0.00"
+                onValueChange={(values) => setAmount(values.value)}
+                thousandSeparator="."
+                decimalSeparator=","
+                prefix="R$ "
+                decimalScale={2}
+                fixedDecimalScale
+                placeholder="R$ 0,00"
                 className="w-full border border-gray-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-[#FF5C00]/20 focus:border-[#FF5C00] outline-none"
                 required
               />
@@ -3953,12 +3977,15 @@ function AddPayableModal({
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Valor (R$) *</label>
-              <input
-                type="number"
-                step="0.01"
+              <NumericFormat
                 value={amount}
-                onChange={e => setAmount(e.target.value)}
-                placeholder="0.00"
+                onValueChange={(values) => setAmount(values.value)}
+                thousandSeparator="."
+                decimalSeparator=","
+                prefix="R$ "
+                decimalScale={2}
+                fixedDecimalScale
+                placeholder="R$ 0,00"
                 className="w-full border border-gray-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-[#FF5C00]/20 focus:border-[#FF5C00] outline-none"
                 required
               />
@@ -4422,7 +4449,7 @@ function ProductModal({
       return;
     }
 
-    const priceValue = parseFloat(price.replace(',', '.'));
+    const priceValue = parseFloat(price);
     if (isNaN(priceValue) || priceValue <= 0) {
       alert('Digite um preço válido.');
       return;
@@ -4566,12 +4593,17 @@ function ProductModal({
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Preço (R$) *</label>
-              <input
-                type="text"
+              <NumericFormat
                 value={price}
-                onChange={(e) => setPrice(e.target.value)}
-                placeholder="30.00"
+                onValueChange={(values) => setPrice(values.value)}
+                thousandSeparator="."
+                decimalSeparator=","
+                prefix="R$ "
+                decimalScale={2}
+                fixedDecimalScale
+                placeholder="R$ 0,00"
                 className="w-full border border-gray-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-[#FF5C00]/20 focus:border-[#FF5C00] outline-none transition-all"
+                required
               />
             </div>
             <div>
@@ -4701,7 +4733,7 @@ function CouponModal({
       await onSave({
         code: code.trim(),
         type,
-        value: parseFloat(value),
+        value: parseFloat(value) || 0,
         minOrderValue: minOrderValue ? parseFloat(minOrderValue) : undefined,
         maxDiscount: type === 'percentage' && maxDiscount ? parseFloat(maxDiscount) : undefined,
         expiresAt: new Date(expiresAt),
@@ -4768,13 +4800,16 @@ function CouponModal({
             </div>
             <div>
               <label className="text-xs font-medium text-gray-500 mb-1 block">Valor {type === 'percentage' ? '(%)' : '(R$)'}</label>
-              <input
-                type="number"
+              <NumericFormat
                 value={value}
-                onChange={e => setValue(e.target.value)}
-                min="0"
-                step={type === 'percentage' ? '1' : '0.01'}
-                placeholder={type === 'percentage' ? '10' : '5,00'}
+                onValueChange={(values) => setValue(values.value)}
+                thousandSeparator="."
+                decimalSeparator=","
+                prefix={type === 'fixed' ? 'R$ ' : ''}
+                suffix={type === 'percentage' ? '%' : ''}
+                decimalScale={2}
+                fixedDecimalScale={type === 'fixed'}
+                placeholder={type === 'percentage' ? '10%' : 'R$ 0,00'}
                 className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-[#FF5C00]/20 focus:border-[#FF5C00] outline-none transition-all"
               />
             </div>
@@ -4783,13 +4818,15 @@ function CouponModal({
           {type === 'percentage' && (
             <div>
               <label className="text-xs font-medium text-gray-500 mb-1 block">Desconto máximo (R$) — opcional</label>
-              <input
-                type="number"
+              <NumericFormat
                 value={maxDiscount}
-                onChange={e => setMaxDiscount(e.target.value)}
-                min="0"
-                step="0.01"
-                placeholder="Ex: 20,00"
+                onValueChange={(values) => setMaxDiscount(values.value)}
+                thousandSeparator="."
+                decimalSeparator=","
+                prefix="R$ "
+                decimalScale={2}
+                fixedDecimalScale
+                placeholder="Ex: R$ 20,00"
                 className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-[#FF5C00]/20 focus:border-[#FF5C00] outline-none transition-all"
               />
               <p className="text-xs text-gray-400 mt-1">Limita o valor máximo de desconto quando usa %</p>
@@ -4798,13 +4835,15 @@ function CouponModal({
 
           <div>
             <label className="text-xs font-medium text-gray-500 mb-1 block">Pedido mínimo (R$) — opcional</label>
-            <input
-              type="number"
+            <NumericFormat
               value={minOrderValue}
-              onChange={e => setMinOrderValue(e.target.value)}
-              min="0"
-              step="0.01"
-              placeholder="Ex: 50,00"
+              onValueChange={(values) => setMinOrderValue(values.value)}
+              thousandSeparator="."
+              decimalSeparator=","
+              prefix="R$ "
+              decimalScale={2}
+              fixedDecimalScale
+              placeholder="Ex: R$ 50,00"
               className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm focus:ring-2 focus:ring-[#FF5C00]/20 focus:border-[#FF5C00] outline-none transition-all"
             />
           </div>
@@ -4910,7 +4949,8 @@ function CouponsContent({
   const activeCoupons = coupons.filter(c => c.active);
   const totalUsed = coupons.reduce((acc, c) => acc + c.usedCount, 0);
   const expiringSoon = coupons.filter(c => {
-    const daysLeft = (new Date(c.expiresAt).getTime() - Date.now()) / (1000 * 60 * 60 * 24);
+    if (!c.expiresAt) return false;
+    const daysLeft = (c.expiresAt.getTime() - Date.now()) / (1000 * 60 * 60 * 24);
     return c.active && daysLeft > 0 && daysLeft <= 7;
   });
 
@@ -4979,9 +5019,9 @@ function CouponsContent({
         ) : (
           <div className="divide-y divide-gray-50">
             {filtered.map(coupon => {
-              const daysLeft = (new Date(coupon.expiresAt).getTime() - Date.now()) / (1000 * 60 * 60 * 24);
-              const isExpired = daysLeft < 0;
-              const isExpiringSoon = !isExpired && daysLeft <= 7;
+              const daysLeft = coupon.expiresAt ? (coupon.expiresAt.getTime() - Date.now()) / (1000 * 60 * 60 * 24) : 0;
+              const isExpired = coupon.expiresAt ? daysLeft < 0 : false;
+              const isExpiringSoon = coupon.expiresAt && !isExpired && daysLeft <= 7;
 
               return (
                 <div key={coupon.id} className="p-4 flex items-center gap-4 hover:bg-gray-50/50 transition-colors">
@@ -5013,7 +5053,7 @@ function CouponsContent({
                   <div className="text-right text-xs text-gray-400 min-w-[80px]">
                     <p>Validade</p>
                     <p className="font-medium text-gray-600">
-                      {isExpired ? 'Expirado' : new Date(coupon.expiresAt).toLocaleDateString('pt-BR')}
+                      {isExpired ? 'Expirado' : coupon.expiresAt ? coupon.expiresAt.toLocaleDateString('pt-BR') : 'Sem validade'}
                     </p>
                   </div>
 
@@ -5261,7 +5301,9 @@ function PromoModal({
     promotion?.applicableProducts || []
   );
   const [maxOrders, setMaxOrders] = useState(promotion?.maxOrders?.toString() || '');
-  const [expiresAt, setExpiresAt] = useState('');
+  const [expiresAt, setExpiresAt] = useState(
+    promotion?.expiresAt ? new Date(promotion.expiresAt).toISOString().split('T')[0] : ''
+  );
 
   const addComboItem = () => {
     if (products.length === 0) return;
@@ -5323,7 +5365,7 @@ function PromoModal({
       name: name.trim(),
       description: description.trim() || undefined,
       type,
-      expiresAt: expiresAt ? new Date(expiresAt) : undefined,
+      expiresAt: expiresAt ? new Date(expiresAt) : null,
       maxOrders: maxOrders ? Number(maxOrders) : undefined,
     };
 
@@ -5468,17 +5510,17 @@ function PromoModal({
 
                 <div className="col-span-1">
                   <label className="text-sm font-medium text-gray-700 mb-1 block">Preço do combo *</label>
-                  <div className="relative">
-                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">R$</span>
-                    <input
-                      type="number"
-                      step="0.01"
-                      value={comboPrice}
-                      onChange={e => setComboPrice(e.target.value)}
-                      placeholder="0.00"
-                      className="w-full border border-gray-200 rounded-xl pl-12 pr-4 py-3 focus:ring-2 focus:ring-[#FF5C00]/30 focus:border-[#FF5C00] outline-none"
-                    />
-                  </div>
+                  <NumericFormat
+                    value={comboPrice}
+                    onValueChange={(values) => setComboPrice(values.value)}
+                    thousandSeparator="."
+                    decimalSeparator=","
+                    prefix="R$ "
+                    decimalScale={2}
+                    fixedDecimalScale
+                    placeholder="R$ 0,00"
+                    className="w-full border border-gray-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-[#FF5C00]/30 focus:border-[#FF5C00] outline-none"
+                  />
                 </div>
 
                 <div className="col-span-1">
@@ -5561,22 +5603,18 @@ function PromoModal({
 
                 <div className="col-span-1">
                   <label className="text-sm font-medium text-gray-700 mb-1 block">Valor do desconto</label>
-                  <div className="relative">
-                    {discountType === 'percentage' && (
-                      <span className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400">%</span>
-                    )}
-                    {discountType === 'fixed' && (
-                      <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400">R$</span>
-                    )}
-                    <input
-                      type="number"
-                      step={discountType === 'percentage' ? '1' : '0.01'}
-                      value={discountValue}
-                      onChange={e => setDiscountValue(e.target.value)}
-                      placeholder={discountType === 'percentage' ? '10' : '5.00'}
-                      className={`w-full border border-gray-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-[#FF5C00]/30 focus:border-[#FF5C00] outline-none ${discountType === 'fixed' ? 'pl-12' : 'pr-10'}`}
-                    />
-                  </div>
+                  <NumericFormat
+                    value={discountValue}
+                    onValueChange={(values) => setDiscountValue(values.value)}
+                    thousandSeparator="."
+                    decimalSeparator=","
+                    prefix={discountType === 'fixed' ? 'R$ ' : ''}
+                    suffix={discountType === 'percentage' ? '%' : ''}
+                    decimalScale={2}
+                    fixedDecimalScale={discountType === 'fixed'}
+                    placeholder={discountType === 'percentage' ? '10%' : 'R$ 0,00'}
+                    className="w-full border border-gray-200 rounded-xl px-12 py-3 focus:ring-2 focus:ring-[#FF5C00]/30 focus:border-[#FF5C00] outline-none"
+                  />
                 </div>
 
                 <div className="col-span-1">
@@ -5751,7 +5789,7 @@ function PromotionsContent({
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {filtered.map(promo => {
-            const isExpired = promo.expiresAt && new Date(promo.expiresAt) < new Date();
+            const isExpired = promo.expiresAt && promo.expiresAt < new Date();
             return (
               <div
                 key={promo.id}
@@ -5837,7 +5875,7 @@ function PromotionsContent({
                   <span>{promo.usedCount || 0} vendas</span>
                   {promo.expiresAt ? (
                     <span className={isExpired ? 'text-red-500' : ''}>
-                      {isExpired ? 'Expirou' : `Validade: ${new Date(promo.expiresAt).toLocaleDateString('pt-BR')}`}
+                      {isExpired ? 'Expirou' : `Validade: ${promo.expiresAt.toLocaleDateString('pt-BR')}`}
                     </span>
                   ) : (
                     <span>Sem validade</span>
@@ -6095,10 +6133,11 @@ function BannerModal({
                   <label className="block text-sm font-bold text-gray-700 mb-2 uppercase tracking-wider">
                     Ordem
                   </label>
-                  <input
-                    type="number"
+                  <NumericFormat
                     value={formData.order}
-                    onChange={(e) => setFormData({ ...formData, order: parseInt(e.target.value) })}
+                    onValueChange={(values) => setFormData({ ...formData, order: parseInt(values.value) || 0 })}
+                    decimalScale={0}
+                    allowNegative={false}
                     className="w-full bg-gray-50 border-0 rounded-2xl py-4 px-6 focus:ring-2 focus:ring-[#FF5C00] transition-all"
                     required
                   />
@@ -6391,11 +6430,11 @@ function ManualOrderModal({
 
               <div className="w-24">
                 <label className="block text-sm font-medium text-gray-700 mb-2">Qtd</label>
-                <input
-                  type="number"
-                  min="1"
+                <NumericFormat
                   value={quantity}
-                  onChange={(e) => setQuantity(parseInt(e.target.value) || 1)}
+                  onValueChange={(values) => setQuantity(parseInt(values.value) || 1)}
+                  decimalScale={0}
+                  allowNegative={false}
                   className="w-full border border-gray-200 rounded-xl p-3 focus:ring-2 focus:ring-[#FF5C00]/30 focus:border-[#FF5C00] outline-none"
                 />
               </div>

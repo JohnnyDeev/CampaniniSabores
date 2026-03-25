@@ -12,34 +12,7 @@ import {
 import { db } from '../firebase';
 import type { Coupon, CouponUse } from '../types';
 
-export async function getCoupons(): Promise<Coupon[]> {
-  const ref = collection(db, 'coupons');
-  const snapshot = await getDocs(ref);
-  return snapshot.docs.map(d => {
-    const data = d.data();
-    return {
-      id: d.id,
-      code: data.code,
-      type: data.type,
-      value: data.value,
-      minOrderValue: data.minOrderValue,
-      maxDiscount: data.maxDiscount,
-      expiresAt: data.expiresAt?.toDate() || new Date(),
-      maxUses: data.maxUses,
-      usedCount: data.usedCount || 0,
-      perCustomerLimit: data.perCustomerLimit || 1,
-      active: data.active ?? true,
-      createdAt: data.createdAt?.toDate() || new Date(),
-    } as Coupon;
-  });
-}
-
-export async function getCouponByCode(code: string): Promise<Coupon | null> {
-  const ref = collection(db, 'coupons');
-  const q = query(ref, where('code', '==', code.toUpperCase().trim()));
-  const snapshot = await getDocs(q);
-  if (snapshot.empty) return null;
-  const d = snapshot.docs[0];
+function mapCoupon(d: any): Coupon {
   const data = d.data();
   return {
     id: d.id,
@@ -48,7 +21,7 @@ export async function getCouponByCode(code: string): Promise<Coupon | null> {
     value: data.value,
     minOrderValue: data.minOrderValue,
     maxDiscount: data.maxDiscount,
-    expiresAt: data.expiresAt?.toDate() || new Date(),
+    expiresAt: data.expiresAt?.toDate() || null,
     maxUses: data.maxUses,
     usedCount: data.usedCount || 0,
     perCustomerLimit: data.perCustomerLimit || 1,
@@ -57,24 +30,40 @@ export async function getCouponByCode(code: string): Promise<Coupon | null> {
   } as Coupon;
 }
 
+function mapCouponUse(d: any): CouponUse {
+  const data = d.data();
+  return {
+    id: d.id,
+    couponId: data.couponId,
+    couponCode: data.couponCode,
+    customerId: data.customerId,
+    customerEmail: data.customerEmail,
+    orderId: data.orderId,
+    discountApplied: data.discountApplied,
+    usedAt: data.usedAt?.toDate() || new Date(),
+  } as CouponUse;
+}
+
+export async function getCoupons(): Promise<Coupon[]> {
+  const ref = collection(db, 'coupons');
+  const snapshot = await getDocs(ref);
+  return snapshot.docs.map(mapCoupon);
+}
+
+export async function getCouponByCode(code: string): Promise<Coupon | null> {
+  const ref = collection(db, 'coupons');
+  const q = query(ref, where('code', '==', code.toUpperCase().trim()));
+  const snapshot = await getDocs(q);
+  if (snapshot.empty) return null;
+  return mapCoupon(snapshot.docs[0]);
+}
+
 export async function getCouponUses(couponId?: string): Promise<CouponUse[]> {
   const ref = collection(db, 'couponUses');
   const snapshot = couponId
     ? await getDocs(query(ref, where('couponId', '==', couponId)))
     : await getDocs(ref);
-  return snapshot.docs.map(d => {
-    const data = d.data();
-    return {
-      id: d.id,
-      couponId: data.couponId,
-      couponCode: data.couponCode,
-      customerId: data.customerId,
-      customerEmail: data.customerEmail,
-      orderId: data.orderId,
-      discountApplied: data.discountApplied,
-      usedAt: data.usedAt?.toDate() || new Date(),
-    } as CouponUse;
-  });
+  return snapshot.docs.map(mapCouponUse);
 }
 
 export interface CouponValidation {

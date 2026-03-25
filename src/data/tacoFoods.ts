@@ -109,13 +109,59 @@ export const tacoFoods: TacoFood[] = [
   { id: 83, name: 'Nozes', kcal: 654, category: 'Outros' },
   { id: 84, name: 'Amendoim', kcal: 567, category: 'Outros' },
   { id: 85, name: 'Passas', kcal: 299, category: 'Outros' },
+  { id: 100, name: 'Água', kcal: 0, category: 'Líquidos' },
 ];
 
-// Função para buscar alimento por nome
+// Função para buscar alimento por nome (match exato)
 export function findFoodByName(name: string): TacoFood | undefined {
   return tacoFoods.find(food =>
     food.name.toLowerCase().includes(name.toLowerCase())
   );
+}
+
+// Busca fuzzy: retorna sugestões ordenadas por relevância para vincular com ingrediente
+export function findClosestTacoMatches(name: string, limit = 5): TacoFood[] {
+  if (!name.trim()) return [];
+  const term = name.toLowerCase().trim();
+  const words = term.split(/\s+/);
+
+  const scored = tacoFoods.map(food => {
+    const foodName = food.name.toLowerCase();
+    let score = 0;
+    // Match exato de substring
+    if (foodName.includes(term)) score += 10;
+    // Começa com o termo
+    if (foodName.startsWith(term)) score += 5;
+    // Cada palavra do nome aparece no alimento
+    words.forEach(word => {
+      if (word.length > 2 && foodName.includes(word)) score += 3;
+    });
+    // Primeira palavra do alimento bate com a busca
+    const firstWord = foodName.split(' ')[0];
+    if (words[0] && firstWord.includes(words[0])) score += 2;
+    return { food, score };
+  });
+
+  return scored
+    .filter(s => s.score > 0)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, limit)
+    .map(s => s.food);
+}
+
+// Busca correspondência exata (ignorando acentos e case) para auto-seleção
+export function findExactTacoMatch(name: string): TacoFood | undefined {
+  if (!name.trim()) return undefined;
+  
+  const normalize = (str: string) => 
+    str.toLowerCase()
+       .normalize('NFD')
+       .replace(/[\u0300-\u036f]/g, '')
+       .trim();
+
+  const normalizedInput = normalize(name);
+  
+  return tacoFoods.find(food => normalize(food.name) === normalizedInput);
 }
 
 // Função para buscar alimentos por categoria

@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import { NumericFormat } from 'react-number-format';
 import { motion } from 'motion/react';
 import {
   Plus,
@@ -12,8 +13,14 @@ import {
   Package,
   Tag,
   Calculator,
-  TrendingUp
+  TrendingUp,
+  Flame,
+  Link2,
+  Link2Off,
+  ChevronDown
 } from 'lucide-react';
+import { findClosestTacoMatches, findExactTacoMatch } from '../data/tacoFoods';
+import type { TacoFood } from '../data/tacoFoods';
 import { getIngredients, createIngredient, updateIngredient, deleteIngredient } from '../services/IngredientService';
 import { getProductRecipes, createProductRecipe, updateProductRecipe, deleteProductRecipe, calculateRecipeCost } from '../services/RecipeService';
 import type { Ingredient, ProductRecipe, RecipeIngredient } from '../types';
@@ -55,7 +62,7 @@ export default function ProductionManager() {
     loadData();
   }, []);
 
-  const lowStockIngredients = ingredients.filter(i => i.currentStock <= i.minStock);
+  // Removido alerta de estoque baixo conforme simplificação solicitada
 
   return (
     <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }}>
@@ -83,18 +90,7 @@ export default function ProductionManager() {
         </button>
       </div>
 
-      {/* Alerta de estoque baixo */}
-      {activeTab === 'ingredients' && lowStockIngredients.length > 0 && (
-        <div className="mb-6 p-4 bg-amber-50 border border-amber-100 rounded-xl flex items-start gap-3">
-          <AlertCircle size={20} className="text-amber-600 flex-shrink-0 mt-0.5" />
-          <div className="flex-1">
-            <p className="text-sm font-medium text-amber-800">Estoque Baixo</p>
-            <p className="text-xs text-amber-700 mt-1">
-              {lowStockIngredients.length} ingrediente(s) abaixo do estoque mínimo: {lowStockIngredients.map(i => i.name).join(', ')}
-            </p>
-          </div>
-        </div>
-      )}
+      {/* Alerta de estoque removido */}
 
       {loading ? (
         <div className="flex items-center justify-center py-20">
@@ -226,10 +222,8 @@ function IngredientsContent({
             <thead>
               <tr className="text-left text-gray-500 border-b border-gray-100">
                 <th className="px-6 py-4 font-medium">Nome</th>
-                <th className="px-6 py-4 font-medium">Categoria</th>
-                <th className="px-6 py-4 font-medium">Estoque</th>
                 <th className="px-6 py-4 font-medium">Custo Unitário</th>
-                <th className="px-6 py-4 font-medium">Fornecedor</th>
+                <th className="px-6 py-4 font-medium">Kcal Total</th>
                 <th className="px-6 py-4 font-medium text-right">Ações</th>
               </tr>
             </thead>
@@ -237,25 +231,12 @@ function IngredientsContent({
               {ingredients.map(ing => (
                 <tr key={ing.id} className="border-b border-gray-50 hover:bg-gray-50">
                   <td className="px-6 py-4 text-gray-800 font-medium">{ing.name}</td>
-                  <td className="px-6 py-4">
-                    <span className="px-2 py-1 bg-gray-100 text-gray-600 rounded text-xs capitalize">
-                      {ing.category}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-2">
-                      <span className={`text-sm ${ing.currentStock <= ing.minStock ? 'text-red-600 font-bold' : 'text-gray-600'}`}>
-                        {ing.currentStock} {ing.stockUnit}
-                      </span>
-                      {ing.currentStock <= ing.minStock && (
-                        <AlertCircle size={14} className="text-red-500" />
-                      )}
-                    </div>
-                  </td>
                   <td className="px-6 py-4 text-gray-600">
                     {formatCurrency(ing.purchasePrice / ing.purchaseQuantity)} / {ing.purchaseUnit}
                   </td>
-                  <td className="px-6 py-4 text-gray-600">{ing.supplier || '—'}</td>
+                  <td className="px-6 py-4 text-gray-600">
+                    {ing.kcalPer100g ? `${Math.round((ing.kcalPer100g / 100) * (['kg', 'L'].includes(ing.purchaseUnit) ? ing.purchaseQuantity * 1000 : ing.purchaseQuantity))} kcal` : '—'}
+                  </td>
                   <td className="px-6 py-4 text-right">
                     <div className="flex justify-end gap-2">
                       <button
@@ -301,30 +282,121 @@ function IngredientModal({
   onClose: () => void;
 }) {
   const [name, setName] = useState(ingredient?.name || '');
-  const [category, setCategory] = useState<Ingredient['category']>(ingredient?.category || 'outros');
   const [purchaseUnit, setPurchaseUnit] = useState<Ingredient['purchaseUnit']>(ingredient?.purchaseUnit || 'kg');
-  const [purchasePrice, setPurchasePrice] = useState(ingredient?.purchasePrice?.toString() || '');
+  const [purchasePrice, setPurchasePrice] = useState(ingredient?.purchasePrice?.toString() || '0');
   const [purchaseQuantity, setPurchaseQuantity] = useState(ingredient?.purchaseQuantity?.toString() || '1');
-  const [currentStock, setCurrentStock] = useState(ingredient?.currentStock?.toString() || '0');
-  const [stockUnit, setStockUnit] = useState<Ingredient['stockUnit']>(ingredient?.stockUnit || 'kg');
-  const [minStock, setMinStock] = useState(ingredient?.minStock?.toString() || '10');
-  const [supplier, setSupplier] = useState(ingredient?.supplier || '');
   const [saving, setSaving] = useState(false);
+
+  // TACO link state
+  const [tacoFoodId, setTacoFoodId] = useState<number | null>(ingredient?.tacoFoodId || null);
+  const [tacoFoodName, setTacoFoodName] = useState<string>('');
+  const [kcalPer100g, setKcalPer100g] = useState<string>(ingredient?.kcalPer100g ? String(Math.round((ingredient.kcalPer100g / 100) * (ingredient.purchaseUnit === 'kg' || ingredient.purchaseUnit === 'L' ? ingredient.purchaseQuantity * 1000 : ingredient.purchaseQuantity))) : '');
+  const [tacoSuggestions, setTacoSuggestions] = useState<TacoFood[]>([]);
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const [tacoSearch, setTacoSearch] = useState('');
+  const tacoRef = useRef<HTMLDivElement>(null);
+
+  // Atualiza as calorias totais quando o ingrediente inicial mudar (ex: ao abrir edição)
+  useEffect(() => {
+    if (ingredient) {
+      if (ingredient.kcalPer100g) {
+        const multiplier = (ingredient.purchaseUnit === 'kg' || ingredient.purchaseUnit === 'L') ? 1000 : 1;
+        const totalKcalVal = Math.round((ingredient.kcalPer100g / 100) * (ingredient.purchaseQuantity * multiplier));
+        setKcalPer100g(String(totalKcalVal));
+      } else {
+        setKcalPer100g('');
+      }
+    }
+  }, [ingredient]);
+
+  // Quando edita, mostra o nome do TACO vinculado
+  useEffect(() => {
+    if (ingredient?.tacoFoodId) {
+      const matches = findClosestTacoMatches(ingredient.name, 20);
+      const linked = matches.find(f => f.id === ingredient.tacoFoodId);
+      if (linked) setTacoFoodName(linked.name);
+    }
+  }, [ingredient]);
+
+  // Busca automática quando digita no campo de busca TACO
+  useEffect(() => {
+    if (tacoSearch.trim().length < 2) {
+      setTacoSuggestions([]);
+      return;
+    }
+    setTacoSuggestions(findClosestTacoMatches(tacoSearch, 6));
+  }, [tacoSearch]);
+
+  // Quando muda o nome do ingrediente, sugere automaticamente ou vincula exato
+  useEffect(() => {
+    if (!tacoFoodId && name.trim().length >= 3) {
+      // Tentar match exato primeiro
+      const exactMatch = findExactTacoMatch(name);
+      if (exactMatch) {
+        selectTacoFood(exactMatch);
+      } else {
+        setTacoSearch(name);
+      }
+    }
+  }, [name]);
+
+  // Clique fora fecha o dropdown
+  useEffect(() => {
+    function handleClickOutside(e: MouseEvent) {
+      if (tacoRef.current && !tacoRef.current.contains(e.target as Node)) {
+        setShowSuggestions(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  function selectTacoFood(food: TacoFood) {
+    setTacoFoodId(food.id);
+    setTacoFoodName(food.name);
+    
+    // Calcula o Kcal Total baseado no peso atual e no valor per 100g do TACO
+    const qty = parseFloat(purchaseQuantity) || 1;
+    const multiplier = (purchaseUnit === 'kg' || purchaseUnit === 'L') ? 1000 : 1;
+    const totalWeight = qty * multiplier;
+    const totalKcal = Math.round((food.kcal / 100) * totalWeight);
+    
+    setKcalPer100g(String(totalKcal));
+    setShowSuggestions(false);
+  }
+
+  function unlinkTacoFood() {
+    setTacoFoodId(null);
+    setTacoFoodName('');
+    setTacoSearch('');
+    setKcalPer100g('');
+    setTacoSuggestions([]);
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
     try {
+      // Converte Kcal Total (da embalagem) para Kcal/100g para armazenamento
+      const totalKcalVal = kcalPer100g ? parseFloat(kcalPer100g.replace(',', '.')) : null;
+      let storedKcalPer100g = null;
+      
+      if (totalKcalVal !== null) {
+        const qty = parseFloat(purchaseQuantity) || 1;
+        const multiplier = (purchaseUnit === 'kg' || purchaseUnit === 'L') ? 1000 : 1;
+        const totalWeight = qty * multiplier;
+        if (totalWeight > 0) {
+          storedKcalPer100g = (totalKcalVal / totalWeight) * 100;
+        }
+      }
+
       await onSave({
         name,
-        category,
         purchaseUnit,
         purchasePrice: parseFloat(purchasePrice) || 0,
         purchaseQuantity: parseFloat(purchaseQuantity) || 1,
-        currentStock: parseFloat(currentStock) || 0,
-        stockUnit,
-        minStock: parseFloat(minStock) || 0,
-        supplier,
+        tacoFoodId: tacoFoodId ?? null,
+        kcalPer100g: storedKcalPer100g,
       });
     } catch (error) {
       alert('Erro ao salvar: ' + (error as Error).message);
@@ -338,9 +410,9 @@ function IngredientModal({
       <motion.div
         initial={{ opacity: 0, scale: 0.95 }}
         animate={{ opacity: 1, scale: 1 }}
-        className="bg-white rounded-2xl w-full max-w-2xl shadow-2xl max-h-[90vh] overflow-y-auto"
+        className="bg-white rounded-2xl w-full max-w-2xl shadow-2xl max-h-[90vh] flex flex-col"
       >
-        <div className="p-6 border-b border-gray-100 flex items-center justify-between">
+        <div className="p-6 border-b border-gray-100 flex items-center justify-between shrink-0">
           <h3 className="text-xl font-bold text-gray-800">
             {ingredient ? 'Editar Ingrediente' : 'Novo Ingrediente'}
           </h3>
@@ -349,7 +421,7 @@ function IngredientModal({
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-4">
+        <form onSubmit={handleSubmit} className="p-6 space-y-4 overflow-y-auto">
           <div className="grid grid-cols-2 gap-4">
             <div className="col-span-2">
               <label className="block text-sm font-medium text-gray-700 mb-2">Nome *</label>
@@ -363,33 +435,7 @@ function IngredientModal({
               />
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Categoria *</label>
-              <select
-                value={category}
-                onChange={e => setCategory(e.target.value as any)}
-                className="w-full border border-gray-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-[#FF5C00]/20 focus:border-[#FF5C00] outline-none bg-white"
-              >
-                <option value="farinha">Farinha</option>
-                <option value="carne">Carne</option>
-                <option value="queijo">Queijo</option>
-                <option value="tempero">Tempero</option>
-                <option value="bebida">Bebida</option>
-                <option value="embalagem">Embalagem</option>
-                <option value="outros">Outros</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Fornecedor</label>
-              <input
-                type="text"
-                value={supplier}
-                onChange={e => setSupplier(e.target.value)}
-                placeholder="Ex: Distribuidora Silva"
-                className="w-full border border-gray-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-[#FF5C00]/20 focus:border-[#FF5C00] outline-none"
-              />
-            </div>
+            {/* Campos removidos: categoria e fornecedor */}
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Unidade de Compra *</label>
@@ -410,71 +456,131 @@ function IngredientModal({
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Preço da Compra (R$) *</label>
-              <input
-                type="number"
-                step="0.01"
+              <NumericFormat
                 value={purchasePrice}
-                onChange={e => setPurchasePrice(e.target.value)}
-                placeholder="0.00"
-                className="w-full border border-gray-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-[#FF5C00]/20 focus:border-[#FF5C00] outline-none"
+                onValueChange={(values) => setPurchasePrice(values.value)}
+                thousandSeparator="."
+                decimalSeparator=","
+                prefix="R$ "
+                decimalScale={2}
+                fixedDecimalScale
+                placeholder="R$ 0,00"
+                className="w-full border border-gray-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-[#FF5C00]/20 focus:border-[#FF5C00] outline-none transition-all"
                 required
               />
             </div>
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Quantidade na Compra *</label>
-              <input
-                type="number"
-                step="0.01"
+              <NumericFormat
                 value={purchaseQuantity}
-                onChange={e => setPurchaseQuantity(e.target.value)}
-                placeholder="1"
-                className="w-full border border-gray-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-[#FF5C00]/20 focus:border-[#FF5C00] outline-none"
+                onValueChange={(values) => setPurchaseQuantity(values.value)}
+                thousandSeparator="."
+                decimalSeparator=","
+                decimalScale={2}
+                placeholder="1,00"
+                className="w-full border border-gray-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-[#FF5C00]/20 focus:border-[#FF5C00] outline-none transition-all"
                 required
               />
               <p className="text-xs text-gray-500 mt-1">Quantos {purchaseUnit} vem na embalagem comprada</p>
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Estoque Atual *</label>
-              <input
-                type="number"
-                step="0.01"
-                value={currentStock}
-                onChange={e => setCurrentStock(e.target.value)}
-                placeholder="0"
-                className="w-full border border-gray-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-[#FF5C00]/20 focus:border-[#FF5C00] outline-none"
-                required
-              />
+            {/* Campos removidos: estoque atual, unidade de estoque, estoque mínimo */}
+          </div>
+
+          {/* ---- VÍNCULO TACO ---- */}
+          <div className="border border-orange-100 bg-orange-50/50 rounded-2xl p-4 space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Flame size={16} className="text-[#FF5C00]" />
+                <span className="text-sm font-semibold text-gray-700">Vínculo Tabela TACO</span>
+              </div>
+              {tacoFoodId && (
+                <button
+                  type="button"
+                  onClick={unlinkTacoFood}
+                  className="flex items-center gap-1 text-xs text-red-500 hover:text-red-700 px-2 py-1 rounded-lg hover:bg-red-50 transition-colors"
+                >
+                  <Link2Off size={13} /> Desvincular
+                </button>
+              )}
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Unidade do Estoque *</label>
-              <select
-                value={stockUnit}
-                onChange={e => setStockUnit(e.target.value as any)}
-                className="w-full border border-gray-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-[#FF5C00]/20 focus:border-[#FF5C00] outline-none bg-white"
-              >
-                <option value="g">Gramas (g)</option>
-                <option value="kg">Quilogramas (kg)</option>
-                <option value="ml">Mililitros (ml)</option>
-                <option value="L">Litros (L)</option>
-                <option value="unidade">Unidade</option>
-              </select>
-            </div>
+            {tacoFoodId ? (
+              // Badge de item vinculado
+              <div className="flex items-center gap-2 bg-green-50 border border-green-200 rounded-xl px-3 py-2">
+                <Link2 size={14} className="text-green-600 shrink-0" />
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs text-green-700 font-medium truncate">{tacoFoodName}</p>
+                  <p className="text-xs text-green-600">ID TACO: {tacoFoodId}</p>
+                </div>
+                <CheckCircle2 size={16} className="text-green-500 shrink-0" />
+              </div>
+            ) : (
+              // Campo de busca
+              <div ref={tacoRef} className="relative">
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={tacoSearch}
+                    onChange={e => {
+                      setTacoSearch(e.target.value);
+                      setShowSuggestions(true);
+                    }}
+                    onFocus={() => tacoSuggestions.length > 0 && setShowSuggestions(true)}
+                    placeholder="Buscar na tabela TACO..."
+                    className="w-full border border-orange-200 rounded-xl px-4 py-2.5 pr-10 bg-white focus:ring-2 focus:ring-[#FF5C00]/20 focus:border-[#FF5C00] outline-none text-sm"
+                  />
+                  <ChevronDown size={16} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+                </div>
+                {showSuggestions && tacoSuggestions.length > 0 && (
+                  <ul className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-xl shadow-lg overflow-hidden max-h-48 overflow-y-auto">
+                    {tacoSuggestions.map(food => (
+                      <li key={food.id}>
+                        <button
+                          type="button"
+                          onClick={() => selectTacoFood(food)}
+                          className="w-full text-left px-4 py-2.5 hover:bg-orange-50 transition-colors flex items-center justify-between gap-3 text-sm"
+                        >
+                          <span className="text-gray-800">{food.name}</span>
+                          <span className="text-xs text-orange-600 font-medium shrink-0">{food.kcal} kcal/100g</span>
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                {showSuggestions && tacoSearch.trim().length >= 2 && tacoSuggestions.length === 0 && (
+                  <div className="absolute z-50 w-full mt-1 bg-white border border-gray-200 rounded-xl shadow-lg px-4 py-3 text-sm text-gray-500">
+                    Nenhum item encontrado na tabela TACO
+                  </div>
+                )}
+              </div>
+            )}
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">Estoque Mínimo *</label>
-              <input
-                type="number"
-                step="0.01"
-                value={minStock}
-                onChange={e => setMinStock(e.target.value)}
-                placeholder="10"
-                className="w-full border border-gray-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-[#FF5C00]/20 focus:border-[#FF5C00] outline-none"
-                required
-              />
-              <p className="text-xs text-gray-500 mt-1">Alerta quando estoque chegar neste valor</p>
+            {/* Campo de kcal */}
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-medium text-gray-600 mb-1.5">
+                  KCAL
+                </label>
+                <div className="relative">
+                  <NumericFormat
+                    value={kcalPer100g}
+                    onValueChange={(values) => setKcalPer100g(values.value)}
+                    decimalScale={1}
+                    allowNegative={false}
+                    placeholder="Ex: 364"
+                    className={`w-full border rounded-xl px-4 py-2.5 outline-none text-sm ${
+                      tacoFoodId
+                        ? 'border-green-200 bg-green-50 text-green-800 focus:border-green-400 focus:ring-2 focus:ring-green-100'
+                        : 'border-gray-200 bg-white focus:ring-2 focus:ring-[#FF5C00]/20 focus:border-[#FF5C00]'
+                    }`}
+                  />
+                  <Flame size={13} className="absolute right-3 top-1/2 -translate-y-1/2 text-orange-400 pointer-events-none" />
+                </div>
+              </div>
+              <div className="flex items-end pb-0.5">
+              </div>
             </div>
           </div>
 
@@ -628,11 +734,11 @@ function RecipeModal({
 }) {
   const [productId, setProductId] = useState(recipe?.productId || products[0]?.id || '');
   const [productName, setProductName] = useState(recipe?.productName || products.find(p => p.id === productId)?.name || '');
-  const [recipeIngredients, setRecipeIngredients] = useState<{ ingredientId: string; quantity: number; unit: string }[]>(
-    recipe?.ingredients.map(i => ({ ingredientId: i.ingredientId, quantity: i.quantity, unit: i.unit })) || []
+  const [recipeIngredients, setRecipeIngredients] = useState<{ ingredientId: string; quantity: number | string; unit: string }[]>(
+    recipe?.ingredients.map(i => ({ ingredientId: i.ingredientId, quantity: i.quantity.toString(), unit: i.unit })) || []
   );
   const [yieldValue, setYield] = useState(recipe?.yield?.toString() || '40');
-  const [salePrice, setSalePrice] = useState(recipe?.salePrice?.toString() || '');
+  const [salePrice, setSalePrice] = useState(recipe?.salePrice?.toString() || '0');
   const [calculatedCost, setCalculatedCost] = useState<{ totalCost: number; costPerUnit: number; profitMargin: number } | null>(null);
   const [saving, setSaving] = useState(false);
 
@@ -642,7 +748,10 @@ function RecipeModal({
       if (recipeIngredients.length === 0) return;
 
       try {
-        const result = await calculateRecipeCost(recipeIngredients);
+        const result = await calculateRecipeCost(recipeIngredients.map(i => ({
+          ...i,
+          quantity: parseFloat(i.quantity.toString()) || 0
+        })));
         const yieldNum = parseFloat(yieldValue) || 1;
         const costPerUnit = result.totalCost / yieldNum;
         const salePriceNum = parseFloat(salePrice) || 0;
@@ -662,7 +771,7 @@ function RecipeModal({
   }, [recipeIngredients, yieldValue, salePrice]);
 
   const addIngredient = () => {
-    setRecipeIngredients([...recipeIngredients, { ingredientId: '', quantity: 0, unit: 'g' }]);
+    setRecipeIngredients([...recipeIngredients, { ingredientId: '', quantity: '0', unit: 'g' }]);
   };
 
   const updateIngredient = (index: number, field: string, value: any) => {
@@ -682,7 +791,10 @@ function RecipeModal({
       await onSave({
         productId,
         productName,
-        ingredients: recipeIngredients,
+        ingredients: recipeIngredients.map(i => ({
+          ...i,
+          quantity: parseFloat(i.quantity.toString()) || 0
+        })),
         yield: parseFloat(yieldValue) || 40,
         salePrice: parseFloat(salePrice) || 0,
       });
@@ -732,11 +844,13 @@ function RecipeModal({
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Rendimento (unidades) *</label>
-              <input
-                type="number"
+              <NumericFormat
                 value={yieldValue}
-                onChange={e => setYield(e.target.value)}
-                placeholder="40"
+                onValueChange={(values) => setYield(values.value)}
+                thousandSeparator="."
+                decimalSeparator=","
+                decimalScale={2}
+                placeholder="40,00"
                 className="w-full border border-gray-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-[#FF5C00]/20 focus:border-[#FF5C00] outline-none"
                 required
               />
@@ -745,12 +859,15 @@ function RecipeModal({
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Preço de Venda (R$) *</label>
-              <input
-                type="number"
-                step="0.01"
+              <NumericFormat
                 value={salePrice}
-                onChange={e => setSalePrice(e.target.value)}
-                placeholder="30.00"
+                onValueChange={(values) => setSalePrice(values.value)}
+                thousandSeparator="."
+                decimalSeparator=","
+                prefix="R$ "
+                decimalScale={2}
+                fixedDecimalScale
+                placeholder="0,00"
                 className="w-full border border-gray-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-[#FF5C00]/20 focus:border-[#FF5C00] outline-none"
                 required
               />
@@ -783,12 +900,13 @@ function RecipeModal({
                       <option key={i.id} value={i.id}>{i.name}</option>
                     ))}
                   </select>
-                  <input
-                    type="number"
-                    step="0.01"
-                    value={ing.quantity || ''}
-                    onChange={e => updateIngredient(index, 'quantity', parseFloat(e.target.value) || 0)}
-                    placeholder="Qtd"
+                  <NumericFormat
+                    value={ing.quantity}
+                    onValueChange={(values) => updateIngredient(index, 'quantity', values.value)}
+                    thousandSeparator="."
+                    decimalSeparator=","
+                    decimalScale={2}
+                    placeholder="0,00"
                     className="w-24 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-[#FF5C00]/20 focus:border-[#FF5C00] outline-none"
                   />
                   <select

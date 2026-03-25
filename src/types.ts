@@ -99,7 +99,7 @@ export interface Coupon {
   value: number;
   minOrderValue?: number;
   maxDiscount?: number;
-  expiresAt: Date;
+  expiresAt: Date | null;
   maxUses: number | null;
   usedCount: number;
   perCustomerLimit: number;
@@ -131,7 +131,7 @@ export interface Promotion {
   image?: string;
   active: boolean;
   startsAt?: Date;
-  expiresAt?: Date;
+  expiresAt?: Date | null;
   maxOrders?: number;
   usedCount: number;
   createdAt: Date;
@@ -196,19 +196,16 @@ export interface ExpenseCategory {
 // FICHA TÉCNICA / CUSTOS
 // =====================
 
-export type IngredientUnit = 'g' | 'kg' | 'ml' | 'L' | 'unidade' | 'pacote' | 'saco';
+export type IngredientUnit = 'g' | 'kg' | 'ml' | 'L';
 
 export interface Ingredient {
   id: string;
   name: string;
-  category: 'farinha' | 'carne' | 'queijo' | 'tempero' | 'bebida' | 'embalagem' | 'outros';
   purchaseUnit: IngredientUnit; // Unidade de compra (kg, L, etc.)
   purchasePrice: number; // Preço pago na compra
   purchaseQuantity: number; // Quantidade na embalagem comprada
-  currentStock: number; // Estoque atual
-  stockUnit: IngredientUnit; // Unidade do estoque (pode ser diferente da compra)
-  minStock: number; // Estoque mínimo para alerta
-  supplier?: string; // Fornecedor
+  tacoFoodId?: number; // ID do alimento na tabela TACO (vínculo nutricional)
+  kcalPer100g?: number; // Kcal por 100g (auto-preenchido ao vincular TACO)
   lastPurchaseDate?: Date;
   createdAt: Date;
 }
@@ -242,10 +239,8 @@ export interface StockMovement {
   type: 'entrada' | 'saida' | 'ajuste' | 'perda';
   quantity: number;
   unit: IngredientUnit;
-  reason?: string; // Motivo do movimento
-  orderId?: string; // Se for saída por produção
+  reason?: string;
   createdAt: Date;
-  createdBy?: string; // UID de quem fez o movimento
 }
 
 export interface ShoppingListItem {
@@ -253,10 +248,7 @@ export interface ShoppingListItem {
   ingredientName: string;
   requiredQuantity: number;
   unit: IngredientUnit;
-  inStock: number;
-  toBuy: number; // requiredQuantity - inStock
   estimatedCost: number;
-  supplier?: string;
 }
 
 export interface Banner {

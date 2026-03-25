@@ -7,34 +7,42 @@ import {
   doc,
   query,
   where,
-  serverTimestamp
+  serverTimestamp,
+  Timestamp
 } from 'firebase/firestore';
 import { db } from '../firebase';
-import type { Promotion } from '../types';
+import { Promotion, FirebaseTimestamp } from '../types';
+
+function toDate(date: FirebaseTimestamp | Date | undefined | null): Date | undefined {
+  if (!date) return undefined;
+  if ('toDate' in date) return date.toDate();
+  return date as Date;
+}
+
+function mapPromotion(id: string, data: any): Promotion {
+  return {
+    id,
+    name: data.name,
+    description: data.description,
+    type: data.type,
+    items: data.items,
+    comboPrice: data.comboPrice,
+    discountType: data.discountType,
+    discountValue: data.discountValue,
+    applicableProducts: data.applicableProducts,
+    active: data.active ?? true,
+    startsAt: toDate(data.startsAt),
+    expiresAt: toDate(data.expiresAt),
+    maxOrders: data.maxOrders,
+    usedCount: data.usedCount || 0,
+    createdAt: toDate(data.createdAt) || new Date(),
+  };
+}
 
 export async function getPromotions(): Promise<Promotion[]> {
   const ref = collection(db, 'promotions');
   const snapshot = await getDocs(ref);
-  return snapshot.docs.map(d => {
-    const data = d.data();
-    return {
-      id: d.id,
-      name: data.name,
-      description: data.description,
-      type: data.type,
-      items: data.items,
-      comboPrice: data.comboPrice,
-      discountType: data.discountType,
-      discountValue: data.discountValue,
-      applicableProducts: data.applicableProducts,
-      active: data.active ?? true,
-      startsAt: data.startsAt?.toDate ? data.startsAt.toDate() : null,
-      expiresAt: data.expiresAt?.toDate ? data.expiresAt.toDate() : null,
-      maxOrders: data.maxOrders,
-      usedCount: data.usedCount || 0,
-      createdAt: data.createdAt?.toDate ? data.createdAt.toDate() : new Date(),
-    } as Promotion;
-  });
+  return snapshot.docs.map(d => mapPromotion(d.id, d.data()));
 }
 
 export async function getActivePromotions(): Promise<Promotion[]> {
@@ -53,39 +61,10 @@ export async function getPromotionById(id: string): Promise<Promotion | null> {
   const ref = doc(db, 'promotions', id);
   const snap = await getDoc(ref);
   if (!snap.exists()) return null;
-  const data = snap.data();
-  return {
-    id: snap.id,
-    name: data.name,
-    description: data.description,
-    type: data.type,
-    items: data.items,
-    comboPrice: data.comboPrice,
-    discountType: data.discountType,
-    discountValue: data.discountValue,
-    applicableProducts: data.applicableProducts,
-    active: data.active ?? true,
-    startsAt: data.startsAt?.toDate ? data.startsAt.toDate() : null,
-    expiresAt: data.expiresAt?.toDate ? data.expiresAt.toDate() : null,
-    maxOrders: data.maxOrders,
-    usedCount: data.usedCount || 0,
-    createdAt: data.createdAt?.toDate ? data.createdAt.toDate() : new Date(),
-  } as Promotion;
+  return mapPromotion(snap.id, snap.data());
 }
 
-export async function createPromotion(data: {
-  name: string;
-  description?: string;
-  type: 'combo' | 'discount';
-  items?: { productId: string; quantity: number }[];
-  comboPrice?: number;
-  discountType?: 'percentage' | 'fixed';
-  discountValue?: number;
-  applicableProducts?: string[];
-  startsAt?: Date;
-  expiresAt?: Date;
-  maxOrders?: number | null;
-}): Promise<string> {
+export async function createPromotion(data: Omit<Promotion, 'id' | 'createdAt' | 'usedCount' | 'active'>): Promise<string> {
   const ref = collection(db, 'promotions');
   const docRef = await addDoc(ref, {
     ...data,
@@ -108,6 +87,7 @@ export async function deletePromotion(promoId: string): Promise<void> {
   const ref = doc(db, 'promotions', promoId);
   const snap = await getDoc(ref);
   if (!snap.exists()) return;
+  // Soft delete
   await updateDoc(ref, { active: false });
 }
 

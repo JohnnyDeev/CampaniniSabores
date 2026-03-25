@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { NumericFormat } from 'react-number-format';
 import { motion, AnimatePresence } from 'motion/react';
 import {
   Plus,
@@ -14,6 +15,7 @@ import {
   Scale,
   RefreshCw,
   Edit,
+  BadgeDollarSign,
 } from 'lucide-react';
 import {
   tacoFoods,
@@ -32,6 +34,8 @@ import {
   type RecipeIngredient,
   type NutritionRecipe,
 } from '../services/NutritionService';
+import { getIngredients } from '../services/IngredientService';
+import type { Ingredient } from '../types';
 
 export default function NutritionCalculator() {
   const [recipeName, setRecipeName] = useState('');
@@ -41,6 +45,8 @@ export default function NutritionCalculator() {
     totalKcal: number;
     totalWeight_g: number;
     kcalPerServing: number;
+    totalCost?: number;
+    costPerServing?: number;
   } | null>(null);
   const [savedRecipes, setSavedRecipes] = useState<NutritionRecipe[]>([]);
   const [loadingRecipes, setLoadingRecipes] = useState(true);
@@ -49,6 +55,9 @@ export default function NutritionCalculator() {
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<string>('Todos');
   const [showCategoryDropdown, setShowCategoryDropdown] = useState(false);
+
+  // Ingredientes de produção (para cálculo de custo)
+  const [prodIngredients, setProdIngredients] = useState<Ingredient[]>([]);
 
   // Estados para edição
   const [editingRecipeId, setEditingRecipeId] = useState<string | null>(null);
@@ -62,6 +71,8 @@ export default function NutritionCalculator() {
     totalWeight_g: number;
     kcalPerServing: number;
     name: string;
+    totalCost?: number;
+    costPerServing?: number;
   } | null>(null);
   const [combinedServingWeight, setCombinedServingWeight] = useState(25);
 
@@ -69,7 +80,30 @@ export default function NutritionCalculator() {
 
   useEffect(() => {
     loadSavedRecipes();
+    // Carrega ingredientes de produção para cálculo de custo
+    getIngredients().then(setProdIngredients).catch(console.error);
   }, []);
+
+  // Calcula o custo total da receita cruzando com ingredientes de produção
+  function calcRecipeCost(ings: RecipeIngredient[]): { totalCost: number; hasCost: boolean } {
+    let totalCost = 0;
+    let hasCost = false;
+    for (const ing of ings) {
+      const prod = prodIngredients.find(p => p.tacoFoodId === ing.foodId);
+      if (prod && prod.purchasePrice && prod.purchaseQuantity) {
+        // custo por grama
+        // purchaseQuantity está na purchaseUnit (kg, L, g, etc.)
+        // Para uma estimativa padrão, normalizamos para gramas:
+        let quantityInGrams = prod.purchaseQuantity;
+        if (prod.purchaseUnit === 'kg') quantityInGrams = prod.purchaseQuantity * 1000;
+        else if (prod.purchaseUnit === 'L') quantityInGrams = prod.purchaseQuantity * 1000;
+        const costPerGram = prod.purchasePrice / quantityInGrams;
+        totalCost += costPerGram * ing.weight_g;
+        hasCost = true;
+      }
+    }
+    return { totalCost, hasCost };
+  }
 
   const loadSavedRecipes = async () => {
     setLoadingRecipes(true);
@@ -119,10 +153,18 @@ export default function NutritionCalculator() {
     const { totalKcal, totalWeight_g } = calculateRecipe(ingredients);
     const kcalPerServing = calculateServingKcal(totalKcal, totalWeight_g, servingWeight);
 
+    // Custo
+    const { totalCost, hasCost } = calcRecipeCost(ingredients);
+    const costPerServing = hasCost && totalWeight_g > 0
+      ? (totalCost / totalWeight_g) * servingWeight
+      : undefined;
+
     setResult({
       totalKcal,
       totalWeight_g,
       kcalPerServing,
+      totalCost: hasCost ? totalCost : undefined,
+      costPerServing,
     });
 
     // Salvar receita automaticamente
@@ -183,11 +225,19 @@ export default function NutritionCalculator() {
     const totalWeight = selectedRecipe1.totalWeight_g + selectedRecipe2.totalWeight_g;
     const kcalPerServing = calculateServingKcal(totalKcal, totalWeight, combinedServingWeight);
 
+    // Calcular custos
+    const { totalCost: cost1 } = calcRecipeCost(selectedRecipe1.ingredients);
+    const { totalCost: cost2 } = calcRecipeCost(selectedRecipe2.ingredients);
+    const totalCost = cost1 + cost2;
+    const costPerServing = totalWeight > 0 ? (totalCost / totalWeight) * combinedServingWeight : 0;
+
     setCombinedResult({
       totalKcal,
       totalWeight_g: totalWeight,
       kcalPerServing,
       name: `${selectedRecipe1.name} + ${selectedRecipe2.name}`,
+      totalCost,
+      costPerServing,
     });
   };
 
@@ -327,10 +377,11 @@ export default function NutritionCalculator() {
                   <p className="text-xs text-gray-500">{ing.kcal} kcal</p>
                 </div>
                 <div className="flex items-center gap-2">
-                  <input
-                    type="number"
+                  <NumericFormat
                     value={ing.weight_g}
-                    onChange={(e) => handleWeightChange(index, parseInt(e.target.value) || 0)}
+                    onValueChange={(values) => handleWeightChange(index, parseInt(values.value) || 0)}
+                    decimalScale={0}
+                    allowNegative={false}
                     className="w-20 border border-gray-200 rounded-lg p-2 text-center text-sm focus:ring-2 focus:ring-[#FF5C00]/30 focus:border-[#FF5C00] outline-none"
                     placeholder="g"
                   />
@@ -391,11 +442,10 @@ export default function NutritionCalculator() {
               </label>
               <div className="flex items-center gap-3">
                 <Scale size={20} className="text-gray-400" />
-                <input
-                  type="number"
+                <NumericFormat
                   value={servingWeight}
-                  onChange={(e) => {
-                    const newWeight = parseInt(e.target.value) || 0;
+                  onValueChange={(values) => {
+                    const newWeight = parseInt(values.value) || 0;
                     setServingWeight(newWeight);
                     if (result) {
                       const kcalPerServing = calculateServingKcal(
@@ -409,14 +459,9 @@ export default function NutritionCalculator() {
                       });
                     }
                   }}
-                  onBlur={(e) => {
-                    // Remove o zero à esquerda quando perde o foco
-                    const value = parseInt(e.target.value) || 0;
-                    if (value > 0) {
-                      setServingWeight(value);
-                    }
-                  }}
-                  className="w-32 border border-gray-200 rounded-xl p-3 focus:ring-2 focus:ring-[#FF5C00]/30 focus:border-[#FF5C00] outline-none text-lg font-semibold [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                  decimalScale={0}
+                  allowNegative={false}
+                  className="w-32 border border-gray-200 rounded-xl p-3 focus:ring-2 focus:ring-[#FF5C00]/30 focus:border-[#FF5C00] outline-none text-lg font-semibold"
                 />
                 <span className="text-gray-500">g</span>
               </div>
@@ -432,8 +477,39 @@ export default function NutritionCalculator() {
               <div className="text-center">
                 <p className="text-sm text-gray-600 mb-2">Cada porção de {servingWeight}g tem:</p>
                 <p className="text-5xl font-bold text-[#FF5C00]">{result.kcalPerServing} kcal</p>
+                {result.costPerServing !== undefined && (
+                  <p className="text-sm text-green-700 font-semibold mt-2">
+                    Custo por porção: R$ {result.costPerServing.toFixed(3)}
+                  </p>
+                )}
               </div>
             </div>
+
+            {/* Custo Total da Receita */}
+            {result.totalCost !== undefined && (
+              <div className="mt-4 flex items-center gap-3 bg-green-50 border border-green-200 rounded-2xl p-4">
+                <BadgeDollarSign size={22} className="text-green-600 shrink-0" />
+                <div className="flex-1">
+                  <p className="text-xs text-green-700 font-medium">Custo Total da Receita</p>
+                  <p className="text-xl font-bold text-green-800">
+                    R$ {result.totalCost.toFixed(2)}
+                  </p>
+                </div>
+                {result.totalWeight_g > 0 && (
+                  <div className="text-right">
+                    <p className="text-xs text-green-600">Por 100g</p>
+                    <p className="text-sm font-bold text-green-700">
+                      R$ {((result.totalCost / result.totalWeight_g) * 100).toFixed(3)}
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
+            {result.totalCost === undefined && (
+              <p className="mt-3 text-xs text-gray-400 text-center">
+                💡 Vincule ingredientes do estoque à tabela TACO em Produção &gt; Ingredientes para calcular o custo
+              </p>
+            )}
 
             {/* Botão Nova Receita */}
             <button
@@ -525,19 +601,23 @@ export default function NutritionCalculator() {
                 </div>
                 <div className="flex items-center gap-3 mb-3">
                   <Scale size={18} className="text-gray-400" />
-                  <input
-                    type="number"
+                  <NumericFormat
                     value={combinedServingWeight}
-                    onChange={(e) => {
-                      const newWeight = parseInt(e.target.value) || 0;
+                    onValueChange={(values) => {
+                      const newWeight = parseInt(values.value) || 0;
                       setCombinedServingWeight(newWeight);
                       const kcalPerServing = calculateServingKcal(
-                        combinedResult.totalKcal,
-                        combinedResult.totalWeight_g,
+                        combinedResult!.totalKcal,
+                        combinedResult!.totalWeight_g,
                         newWeight
                       );
-                      setCombinedResult({ ...combinedResult, kcalPerServing });
+                      const costPerServing = combinedResult!.totalWeight_g > 0 
+                        ? ((combinedResult!.totalCost || 0) / combinedResult!.totalWeight_g) * newWeight
+                        : 0;
+                      setCombinedResult({ ...combinedResult!, kcalPerServing, costPerServing });
                     }}
+                    decimalScale={0}
+                    allowNegative={false}
                     className="w-24 border border-gray-200 rounded-lg p-2 text-center text-sm focus:ring-2 focus:ring-[#FF5C00]/30 focus:border-[#FF5C00] outline-none"
                   />
                   <span className="text-gray-500">g</span>
@@ -545,6 +625,11 @@ export default function NutritionCalculator() {
                 <div className="text-center p-3 bg-[#FF5C00]/10 rounded-lg">
                   <p className="text-sm text-gray-600">Cada porção de {combinedServingWeight}g tem:</p>
                   <p className="text-2xl font-bold text-[#FF5C00]">{combinedResult.kcalPerServing} kcal</p>
+                  {combinedResult.costPerServing !== undefined && combinedResult.totalCost! > 0 && (
+                    <p className="text-xs text-green-700 font-semibold mt-1">
+                      Custo: R$ {combinedResult.costPerServing.toFixed(3)}
+                    </p>
+                  )}
                 </div>
                 <button
                   onClick={handleSaveCombinedRecipe}
@@ -579,11 +664,15 @@ export default function NutritionCalculator() {
                   <p className="font-medium text-gray-800">{recipe.name}</p>
                   <p className="text-xs text-gray-500">
                     {recipe.kcalPerServing} kcal/un ({recipe.servingWeight_g}g) • {recipe.totalWeight_g}g total
+                    {(() => {
+                      const { totalCost, hasCost } = calcRecipeCost(recipe.ingredients);
+                      return hasCost ? ` • R$ ${totalCost.toFixed(2)}` : '';
+                    })()}
                   </p>
                 </div>
                 <div className="flex items-center gap-2">
                   <button
-                    onClick={() => handleLoadRecipe(recipe)}
+                    onClick={() => handleEditRecipe(recipe)}
                     className="p-2 text-gray-600 hover:bg-gray-200 rounded-lg transition-colors"
                     title="Carregar receita"
                   >

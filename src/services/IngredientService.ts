@@ -30,14 +30,11 @@ export async function getIngredients(): Promise<Ingredient[]> {
       return {
         id: d.id,
         name: data.name,
-        category: data.category,
         purchaseUnit: data.purchaseUnit,
         purchasePrice: data.purchasePrice,
         purchaseQuantity: data.purchaseQuantity,
-        currentStock: data.currentStock,
-        stockUnit: data.stockUnit,
-        minStock: data.minStock,
-        supplier: data.supplier,
+        tacoFoodId: data.tacoFoodId,
+        kcalPer100g: data.kcalPer100g,
         lastPurchaseDate: data.lastPurchaseDate?.toDate ? data.lastPurchaseDate.toDate() : null,
         createdAt: data.createdAt?.toDate ? data.createdAt.toDate() : new Date(),
       } as Ingredient;
@@ -59,14 +56,11 @@ export async function getIngredientById(id: string): Promise<Ingredient | null> 
     return {
       id: snap.id,
       name: data.name,
-      category: data.category,
       purchaseUnit: data.purchaseUnit,
       purchasePrice: data.purchasePrice,
       purchaseQuantity: data.purchaseQuantity,
-      currentStock: data.currentStock,
-      stockUnit: data.stockUnit,
-      minStock: data.minStock,
-      supplier: data.supplier,
+      tacoFoodId: data.tacoFoodId,
+      kcalPer100g: data.kcalPer100g,
       lastPurchaseDate: data.lastPurchaseDate?.toDate ? data.lastPurchaseDate.toDate() : null,
       createdAt: data.createdAt?.toDate ? data.createdAt.toDate() : new Date(),
     } as Ingredient;
@@ -78,32 +72,27 @@ export async function getIngredientById(id: string): Promise<Ingredient | null> 
 
 export async function createIngredient(data: {
   name: string;
-  category: Ingredient['category'];
   purchaseUnit: Ingredient['purchaseUnit'];
   purchasePrice: number;
   purchaseQuantity: number;
-  currentStock: number;
-  stockUnit: Ingredient['stockUnit'];
-  minStock: number;
-  supplier?: string;
+  tacoFoodId?: number;
+  kcalPer100g?: number;
 }): Promise<string> {
   try {
     const ref = collection(db, 'ingredients');
-    const docRef = await addDoc(ref, {
-      ...data,
+
+    // Sanitiza campos opcionais e garante tipos numéricos
+    const sanitized: Record<string, any> = {
+      name: data.name,
+      purchaseUnit: data.purchaseUnit,
+      purchasePrice: Number(data.purchasePrice),
+      purchaseQuantity: Number(data.purchaseQuantity),
       createdAt: serverTimestamp(),
-    });
-    
-    // Criar movimentação de estoque inicial
-    await createStockMovement({
-      ingredientId: docRef.id,
-      ingredientName: data.name,
-      type: 'entrada',
-      quantity: data.currentStock,
-      unit: data.stockUnit,
-      reason: 'Cadastro inicial',
-    });
-    
+    };
+    if (data.tacoFoodId != null) sanitized.tacoFoodId = Number(data.tacoFoodId);
+    if (data.kcalPer100g != null) sanitized.kcalPer100g = Number(data.kcalPer100g);
+
+    const docRef = await addDoc(ref, sanitized);
     return docRef.id;
   } catch (error) {
     console.error('Erro ao criar ingrediente:', error);
@@ -133,79 +122,7 @@ export async function deleteIngredient(id: string): Promise<void> {
   }
 }
 
-// =====================
-// MOVIMENTAÇÕES DE ESTOQUE
-// =====================
-
-export async function createStockMovement(data: {
-  ingredientId: string;
-  ingredientName: string;
-  type: 'entrada' | 'saida' | 'ajuste' | 'perda';
-  quantity: number;
-  unit: string;
-  reason?: string;
-  orderId?: string;
-}): Promise<string> {
-  try {
-    const ref = collection(db, 'stockMovements');
-    const docRef = await addDoc(ref, {
-      ...data,
-      createdAt: serverTimestamp(),
-    });
-    
-    // Atualizar estoque atual
-    const ingredient = await getIngredientById(data.ingredientId);
-    if (ingredient) {
-      let newStock = ingredient.currentStock;
-      
-      if (data.type === 'entrada') {
-        newStock += data.quantity;
-      } else if (data.type === 'saida' || data.type === 'perda') {
-        newStock -= data.quantity;
-      } else if (data.type === 'ajuste') {
-        newStock = data.quantity; // Ajuste direto
-      }
-      
-      await updateIngredient(data.ingredientId, {
-        currentStock: newStock,
-      });
-    }
-    
-    return docRef.id;
-  } catch (error) {
-    console.error('Erro ao criar movimentação de estoque:', error);
-    throw new Error('Erro ao criar movimentação de estoque');
-  }
-}
-
-export async function getStockMovements(ingredientId?: string): Promise<StockMovement[]> {
-  try {
-    const ref = collection(db, 'stockMovements');
-    const q = ingredientId
-      ? query(ref, orderBy('createdAt', 'desc'))
-      : query(ref, orderBy('createdAt', 'desc'));
-    
-    const snapshot = await getDocs(q);
-    
-    return snapshot.docs.map(d => {
-      const data = d.data();
-      return {
-        id: d.id,
-        ingredientId: data.ingredientId,
-        ingredientName: data.ingredientName,
-        type: data.type,
-        quantity: data.quantity,
-        unit: data.unit,
-        reason: data.reason,
-        orderId: data.orderId,
-        createdAt: data.createdAt?.toDate ? data.createdAt.toDate() : new Date(),
-      } as StockMovement;
-    });
-  } catch (error) {
-    console.error('Erro ao buscar movimentações de estoque:', error);
-    return [];
-  }
-}
+// Removidos: createStockMovement, getStockMovements, generateShoppingList, getLowStockIngredients
 
 // =====================
 // UTILITÁRIOS
@@ -237,50 +154,10 @@ export function convertUnit(
   return value;
 }
 
-export async function generateShoppingList(
-  requiredIngredients: { ingredientId: string; quantity: number; unit: string }[]
-): Promise<ShoppingListItem[]> {
-  const ingredients = await getIngredients();
-  
-  return requiredIngredients.map(req => {
-    const ingredient = ingredients.find(i => i.id === req.ingredientId);
-    
-    if (!ingredient) {
-      return {
-        ingredientId: req.ingredientId,
-        ingredientName: 'Desconhecido',
-        requiredQuantity: req.quantity,
-        unit: req.unit as any,
-        inStock: 0,
-        toBuy: req.quantity,
-        estimatedCost: 0,
-      };
-    }
-    
-    // Converter unidades se necessário
-    let requiredInStockUnit = req.quantity;
-    if (req.unit !== ingredient.stockUnit) {
-      requiredInStockUnit = convertUnit(req.quantity, req.unit, ingredient.stockUnit);
-    }
-    
-    const toBuy = Math.max(0, requiredInStockUnit - ingredient.currentStock);
-    const unitCost = calculateUnitCost(ingredient);
-    const estimatedCost = toBuy * unitCost;
-    
-    return {
-      ingredientId: ingredient.id,
-      ingredientName: ingredient.name,
-      requiredQuantity: req.quantity,
-      unit: req.unit as any,
-      inStock: ingredient.currentStock,
-      toBuy,
-      estimatedCost,
-      supplier: ingredient.supplier,
-    };
-  });
-}
+// Removidos utilitários de estoque e lista de compras que dependiam de campos excluídos
 
-export async function getLowStockIngredients(): Promise<Ingredient[]> {
+// Busca um ingrediente de produção vinculado a um ID TACO
+export async function findIngredientByTacoId(tacoFoodId: number): Promise<Ingredient | null> {
   const ingredients = await getIngredients();
-  return ingredients.filter(i => i.currentStock <= i.minStock);
+  return ingredients.find(i => i.tacoFoodId === tacoFoodId) ?? null;
 }

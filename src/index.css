@@ -66,4 +66,22 @@
   .banner-container {
     @apply relative aspect-video w-full rounded-2xl overflow-hidden shadow-xl mb-6;
   }
+
+  .custom-scrollbar {
+    &::-webkit-scrollbar {
+      width: 6px;
+    }
+    &::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    &::-webkit-scrollbar-thumb {
+      background: #e5e7eb;
+      border-radius: 10px;
+    }
+    &::-webkit-scrollbar-thumb:hover {
+      background: #d1d5db;
+    }
+    scrollbar-width: thin;
+    scrollbar-color: #e5e7eb transparent;
+  }
 }
